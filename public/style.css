@@ -226,13 +226,10 @@ label.stack > input, label.stack > .select-wrap, label.stack > select { margin-t
   gap: 24px; padding: 24px clamp(16px, 6vw, 96px); max-width: 1200px; margin: 0 auto;
 }
 .login-art { position: relative; display: grid; place-items: center; min-height: 420px; }
-.mascots { position: relative; width: min(460px, 90%); aspect-ratio: 460 / 330; }
-.mascots .m-cat { position: absolute; left: 6%; bottom: 22%; width: 52%; height: auto; aspect-ratio: 120 / 112; }
-.mascots .m-fish { position: absolute; right: 2%; bottom: 31%; width: 44%; height: auto; aspect-ratio: 132 / 92; transform: rotate(-6deg); }
-.mascots .m-box { position: absolute; left: 0; bottom: 0; width: 100%; height: auto; aspect-ratio: 240 / 70; }
-.sparkle { position: absolute; fill: #F6C445; width: 28px; height: 28px; }
-.sparkle.s1 { top: 12%; left: 18%; }
-.sparkle.s2 { top: 22%; right: 16%; width: 20px; height: 20px; fill: var(--fish); }
+.hero-sticker {
+  width: min(460px, 92%); height: auto;
+  filter: drop-shadow(0 18px 30px rgb(150 110 60 / .18));
+}
 .login-card {
   background: var(--card); border-radius: var(--r-xl); padding: 40px 36px 28px;
   box-shadow: var(--shadow-2); max-width: 420px; width: 100%; justify-self: center;
@@ -255,7 +252,7 @@ label.stack > input, label.stack > .select-wrap, label.stack > select { margin-t
 @media (max-width: 820px) {
   .login { grid-template-columns: 1fr; align-content: center; padding-top: 16px; }
   .login-art { min-height: 0; margin-bottom: -48px; z-index: 1; }
-  .mascots { width: min(300px, 80%); }
+  .hero-sticker { width: min(240px, 64%); }
   .login-card { padding: 56px 24px 24px; }
 }
 
@@ -269,9 +266,7 @@ label.stack > input, label.stack > .select-wrap, label.stack > select { margin-t
   border-radius: var(--r-lg); box-shadow: var(--shadow-1);
 }
 .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); min-width: 0; }
-.brand-mark { position: relative; width: 64px; height: 44px; flex: none; }
-.brand-mark .bm-cat { position: absolute; left: 0; top: 0; width: 44px; height: 42px; }
-.brand-mark .bm-fish { position: absolute; right: -4px; bottom: 0; width: 34px; height: 24px; }
+.brand-mark { width: 60px; height: auto; flex: none; filter: drop-shadow(0 2px 4px rgb(0 0 0 / .08)); }
 .brand-text { font-family: var(--font-round); font-weight: 800; font-size: 22px; white-space: nowrap; letter-spacing: .02em; }
 .search {
   position: relative; flex: 1; max-width: 420px; margin-left: auto;
@@ -325,9 +320,8 @@ label.stack > input, label.stack > .select-wrap, label.stack > select { margin-t
   background: var(--accent-soft); z-index: -1;
   transition: transform var(--t-slow) var(--spring);
 }
-.sidebar-art { margin-top: auto; position: relative; height: 120px; pointer-events: none; }
-.sidebar-art .sa-cat { position: absolute; left: 4px; bottom: 0; width: 104px; height: 97px; }
-.sidebar-art .sa-fish { position: absolute; left: 96px; bottom: 6px; width: 92px; height: 64px; transform: rotate(-8deg); }
+.sidebar-art { margin-top: auto; padding: 0 4px 4px; pointer-events: none; }
+.sidebar-art img { display: block; width: 100%; height: auto; }
 
 .stage { padding: calc(var(--topbar-h) + 32px) 24px 32px calc(var(--sidebar-w) + 36px); }
 .view { max-width: 1160px; margin: 0 auto; }
@@ -441,10 +435,8 @@ td.muted { color: var(--text-2); font-variant-numeric: tabular-nums; }
 
 /* 空状态 */
 .empty { text-align: center; padding: 40px 16px 48px; }
-.empty-art { position: relative; width: 220px; height: 130px; margin: 0 auto 12px; }
-.empty-art .e-cat { position: absolute; left: 22px; bottom: 26px; width: 96px; height: 90px; }
-.empty-art .e-fish { position: absolute; right: 14px; bottom: 38px; width: 84px; height: 58px; transform: rotate(-6deg); }
-.empty-art .e-box { position: absolute; left: 0; bottom: 0; width: 220px; height: 64px; }
+.empty-art { width: 200px; margin: 0 auto 12px; }
+.empty-art img { display: block; width: 100%; height: auto; }
 .empty-title { font-family: var(--font-round); font-size: 19px; font-weight: 800; margin: 0 0 4px; }
 .empty-sub { color: var(--text-2); margin: 0; }
 
@@ -617,7 +609,6 @@ dialog.preview::backdrop { background: transparent; }
 @keyframes float { 50% { transform: translateY(-6px); } }
 @keyframes blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(.1); } }
 .float { animation: float 6s ease-in-out infinite; }
-.mascots .m-fish { animation: float 4.6s ease-in-out infinite; animation-delay: -1.2s; }
 
 /* 系统开启“减弱动态效果”：位移、缩放改为淡入淡出，去掉循环动画 */
 @media (prefers-reduced-motion: reduce) {
@@ -625,7 +616,7 @@ dialog.preview::backdrop { background: transparent; }
   .view.enter-right, .view.enter-left, .drawer[open], .modal[open], .menu, .toast, .upload, .uploads, .selection-bar, .table tbody tr.row-in {
     animation: fade-in 200ms ease-out !important;
   }
-  .float, .mascots .m-fish { animation: none !important; }
+  .float { animation: none !important; }
 }
 
 /* ==========================================================================
