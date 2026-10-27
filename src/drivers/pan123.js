@@ -131,6 +131,65 @@ export class Pan123Driver {
     this.invalidate(node.parentFileId);
   }
 
+  // ---------- 123 自己的回收站：网盘的回收站模块优先用这一组方法，而不是移到 .pan-trash ----------
+  // 文档：删除/删除文件至回收站、还原/从回收站恢复文件、还原/还原文件到指定目录。
+  // 开放平台文档里没有“彻底删除”接口，所以没有 purge：网盘里彻底删除只去掉记录，文件留在 123 的回收站。
+
+  /** 移到 123 回收站，返回还原时要用的凭据 */
+  async trash(p) {
+    const node = await this.lookup(p);
+    await this.api('POST', '/api/v1/file/trash', { body: { fileIDs: [node.fileId] } });
+    this.invalidate(node.parentFileId);
+    return { fileId: node.fileId };
+  }
+
+  async detail(fileId) {
+    try {
+      return await this.api('GET', '/api/v1/file/detail', { query: { fileID: fileId } });
+    } catch (e) {
+      if (e.panCode === 5066) throw Object.assign(new Error('文件已经在 123云盘的回收站里被彻底删除了'), { status: 410 });
+      throw e;
+    }
+  }
+
+  /**
+   * 还原到删除前的位置。原目录已经不存在时返回 { missingParent: true }，由调用方建好目录后调 restoreTo()。
+   * 文件已经不在回收站（比如在 123 的 App 里还原过）时返回 { already: true }。
+   */
+  async restore({ fileId }) {
+    const d = await this.detail(fileId);
+    if (Number(d.trashed) === 0) return { parentId: d.parentFileID, already: true };
+    const r = await this.api('POST', '/api/v1/file/recover', { body: { fileIDs: [fileId] } });
+    if ((r?.abnormalFileIDs || []).map(Number).includes(Number(fileId))) return { missingParent: true };
+    this.cache.clear();
+    return { parentId: d.parentFileID };
+  }
+
+  /** 还原到指定目录（原目录不在了的时候用） */
+  async restoreTo({ fileId }, dir) {
+    const parent = await this.lookup(dir);
+    await this.api('POST', '/api/v1/file/recover/by_path', { body: { fileIDs: [fileId], parentFileID: parent.fileId } });
+    this.cache.clear();
+    return { parentId: parent.fileId };
+  }
+
+  /** 还原后和同目录的文件重名时，把还原出来的改名为“名称 (恢复).扩展名”；返回最终名称（找不到时返回 null） */
+  async dedupe({ fileId }, parentId) {
+    this.invalidate(parentId);
+    const items = await this.children(parentId);
+    const me = items.find((f) => f.fileId === fileId);
+    if (!me) return null;
+    const taken = new Set(items.filter((f) => f.fileId !== fileId).map((f) => f.filename));
+    if (!taken.has(me.filename)) return me.filename;
+    const ext = me.type === 1 ? '' : path.posix.extname(me.filename);
+    const base = ext ? me.filename.slice(0, -ext.length) : me.filename;
+    let name = '';
+    for (let n = 1; !name || taken.has(name); n++) name = `${base} (恢复${n > 1 ? n : ''})${ext}`;
+    await this.api('PUT', '/api/v1/file/name', { body: { fileId, fileName: name } });
+    this.invalidate(parentId);
+    return name;
+  }
+
   // 直链缓存 10 分钟：预览/转码时会反复请求同一文件，避免触发 download_info 限流
   async downloadUrl(p) {
     const node = await this.lookup(p);

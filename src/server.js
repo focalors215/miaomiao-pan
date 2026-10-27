@@ -248,11 +248,8 @@ api.post('/fs/upload', async (req, res, next) => {
 // ---------- 回收站 ----------
 api.get('/trash', (req, res) => res.json(trash.list(req.user)));
 api.post('/trash/:id/restore', async (req, res) => res.json(await trash.restore(req.user, req.params.id)));
-api.delete('/trash/:id', async (req, res) => {
-  await trash.purge(req.user, req.params.id);
-  res.json({ ok: true });
-});
-api.delete('/trash', async (req, res) => res.json({ ok: true, removed: await trash.empty(req.user) }));
+api.delete('/trash/:id', async (req, res) => res.json({ ok: true, ...(await trash.purge(req.user, req.params.id)) }));
+api.delete('/trash', async (req, res) => res.json({ ok: true, ...(await trash.empty(req.user)) }));
 
 // ---------- 分享和直链 ----------
 api.get('/shares', (req, res) => res.json(shares.list(req.user)));

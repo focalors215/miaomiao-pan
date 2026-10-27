@@ -1050,7 +1050,7 @@ async function loadTrash() {
   $('#btn-empty-trash').disabled = !items.length;
   $('#trash-rows').innerHTML = items
     .map(
-      (t, i) => `<tr data-id="${t.id}" data-name="${esc(t.name)}" class="row-in"${stagger(i)}>
+      (t, i) => `<tr data-id="${t.id}" data-name="${esc(t.name)}" data-native="${t.native ? 1 : 0}" class="row-in"${stagger(i)}>
         <td><span class="name">${fileIcon(t)}<span>${esc(t.name)}</span></span></td>
         <td><a class="from" href="#${encodeURIComponent(t.from)}" data-goto>${esc(t.from === '/' ? '全部文件' : t.from)}</a></td>
         <td class="muted">${fmtDate(t.deletedAt)}</td>
@@ -1070,12 +1070,19 @@ $('#trash-rows').addEventListener('click', async (e) => {
   try {
     if (btn.dataset.act === 'restore') {
       const r = await api('POST', `/api/trash/${id}/restore`);
-      toast(r.name === name ? `已还原到 ${r.to}` : `原位置有同名文件，已还原为“${r.name}”`);
+      toast(r.already ? '这个文件已经在 123云盘里还原过了' : r.name === name ? `已还原到 ${r.to}` : `原位置有同名文件，已还原为“${r.name}”`);
     } else {
-      const ok = await ask({ title: `彻底删除“${name}”？`, message: '彻底删除后无法恢复。', confirm: true, okText: '彻底删除', danger: true });
+      const native = tr.dataset.native === '1';
+      const ok = await ask({
+        title: `彻底删除“${name}”？`,
+        message: native ? '这个文件在 123云盘里，会从这里的回收站移除，但仍保留在 123云盘自己的回收站中，由 123 按它的规则清理。' : '彻底删除后无法恢复。',
+        confirm: true,
+        okText: native ? '移除' : '彻底删除',
+        danger: true,
+      });
       if (!ok) return;
-      await api('DELETE', `/api/trash/${id}`);
-      toast('已彻底删除');
+      const r = await api('DELETE', `/api/trash/${id}`);
+      toast(r.native ? '已从回收站移除，文件还在 123云盘自己的回收站里' : '已彻底删除');
     }
   } catch (err) {
     toast(err.message, 'error');
@@ -1088,7 +1095,7 @@ $('#btn-empty-trash').addEventListener('click', async () => {
   if (!ok) return;
   try {
     const r = await api('DELETE', '/api/trash');
-    toast(`已彻底删除 ${r.removed} 项`);
+    toast(r.native ? `已清空，其中 ${r.native} 项还在 123云盘自己的回收站里` : `已彻底删除 ${r.removed} 项`);
   } catch (err) {
     toast(err.message, 'error');
   }
