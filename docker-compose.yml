@@ -1,0 +1,15 @@
+services:
+  pan:
+    build: .
+    image: pan:latest
+    container_name: pan
+    restart: unless-stopped
+    ports:
+      - "${PAN_PORT:-8080}:8080"
+    environment:
+      ADMIN_USER: ${ADMIN_USER:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?请在 .env 中设置 ADMIN_PASSWORD}
+    volumes:
+      - ./data:/data
+      # 挂载宿主机目录作为“本机存储”，在网页里添加本机存储时根目录填 /mnt/disk
+      # - /srv/files:/mnt/disk

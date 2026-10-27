@@ -1,0 +1,16 @@
+# 测试用：在网盘旁边启动 MinIO(S3) 和 WebDAV 服务，只在 compose 内网可访问
+# 用法：docker compose -f docker-compose.yml -f test/docker-compose.test.yml up -d --build
+# 启动后建测试桶：docker compose exec pan node test/create-bucket.js
+services:
+  pan:
+    volumes:
+      - ./test:/app/test:ro
+  minio:
+    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
+    command: server /data
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+  webdav:
+    image: rclone/rclone:1.75.1
+    command: serve webdav /data --addr :80 --user dav --pass dav123

@@ -1,0 +1,10 @@
+# macOS
+.DS_Store
+
+# 依赖
+node_modules/
+
+# 运行数据和密钥：data/config.json 里有存储凭据和 123 的 access_token，.env 里有管理员密码
+data/
+.env
+!.env.example

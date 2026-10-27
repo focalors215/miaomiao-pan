@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>网盘</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <section id="login" class="login" hidden>
+    <form id="login-form" class="card">
+      <h1>网盘</h1>
+      <label>用户名<input name="username" autocomplete="username" required></label>
+      <label>密码<input name="password" type="password" autocomplete="current-password" required></label>
+      <button class="primary">登录</button>
+      <p class="error" id="login-error"></p>
+    </form>
+  </section>
+
+  <section id="app" hidden>
+    <header class="topbar">
+      <strong class="brand">网盘</strong>
+      <nav class="tabs">
+        <button data-view="files" class="active">文件</button>
+        <button data-view="storages">存储</button>
+      </nav>
+      <button id="logout" class="ghost">退出</button>
+    </header>
+
+    <main id="view-files" class="view">
+      <div class="toolbar">
+        <nav id="crumbs" class="crumbs"></nav>
+        <div class="actions">
+          <button id="btn-refresh" class="ghost" title="刷新">刷新</button>
+          <button id="btn-mkdir">新建文件夹</button>
+          <label class="button primary">上传<input id="upload-input" type="file" multiple hidden></label>
+        </div>
+      </div>
+      <div id="uploads" class="uploads"></div>
+      <div id="drop" class="table-wrap">
+        <table class="files">
+          <thead><tr><th>名称</th><th class="num">大小</th><th class="hide-sm">修改时间</th><th></th></tr></thead>
+          <tbody id="file-rows"></tbody>
+        </table>
+        <p id="empty" class="empty" hidden>空文件夹，拖拽文件到这里上传</p>
+      </div>
+    </main>
+
+    <main id="view-storages" class="view" hidden>
+      <div class="toolbar">
+        <h2>存储挂载</h2>
+        <button id="btn-add-storage" class="primary">添加存储</button>
+      </div>
+      <div class="table-wrap">
+        <table class="files">
+          <thead><tr><th>挂载路径</th><th>类型</th><th>状态</th><th></th></tr></thead>
+          <tbody id="storage-rows"></tbody>
+        </table>
+        <p id="storage-empty" class="empty" hidden>还没有存储，点击“添加存储”挂载本机目录、S3、WebDAV 或 123云盘</p>
+      </div>
+    </main>
+  </section>
+
+  <dialog id="storage-dialog">
+    <form id="storage-form" method="dialog" class="card">
+      <h2 id="storage-title">添加存储</h2>
+      <label>类型<select name="type" id="storage-type"></select></label>
+      <label>挂载路径<input name="mountPath" placeholder="/本地" required></label>
+      <div id="storage-fields"></div>
+      <label class="check"><input type="checkbox" name="enabled" checked> 启用</label>
+      <p class="error" id="storage-error"></p>
+      <div class="row">
+        <button type="button" id="storage-cancel" class="ghost">取消</button>
+        <button class="primary" value="save">保存</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="preview" class="preview">
+    <header class="pv-bar">
+      <strong id="pv-name" class="pv-name"></strong>
+      <span id="pv-status" class="pv-status"></span>
+      <span id="pv-count" class="pv-count"></span>
+      <a id="pv-open" class="button ghost" target="_blank" rel="noopener">新标签打开</a>
+      <a id="pv-download" class="button ghost">下载</a>
+      <button id="pv-close" class="ghost" aria-label="关闭">✕</button>
+    </header>
+    <div id="pv-body" class="pv-body"></div>
+    <button id="pv-prev" class="pv-nav prev" aria-label="上一个">‹</button>
+    <button id="pv-next" class="pv-nav next" aria-label="下一个">›</button>
+  </dialog>
+
+  <script src="app.js" type="module"></script>
+</body>
+</html>
