@@ -110,6 +110,29 @@ check "代理模式文件内容正确" "$(cat "$WORK/proxy.txt")" "测试 网盘
 B=$(json paths '["/s3/小文件.txt"]')
 check "打码后原密钥仍可用（删除成功）" "$(code POST /api/fs/delete "$B")" 200
 
+echo "== 修改账号"
+ORIG_USER=$(req "$BASE/api/me" | jq_ 'j.user')
+NEWPASS="${PASS}-e2e"
+cp "$JAR" "$WORK/old-cookie"
+B=$(json currentPassword wrong username e2e-user newPassword "$NEWPASS")
+check "当前密码错误被拒绝" "$(code PUT /api/account "$B")" 403
+B=$(json currentPassword "$PASS" newPassword short)
+check "新密码太短被拒绝" "$(code PUT /api/account "$B")" 400
+B=$(json currentPassword "$PASS" username "a|b")
+check "非法用户名被拒绝" "$(code PUT /api/account "$B")" 400
+B=$(json currentPassword "$PASS" username e2e-user newPassword "$NEWPASS")
+check "修改用户名和密码" "$(code PUT /api/account "$B")" 200
+check "当前设备保持登录" "$(req "$BASE/api/me" | jq_ 'j.user')" e2e-user
+check "其他设备的旧会话失效" "$(curl -s -o /dev/null -w '%{http_code}' -b "$WORK/old-cookie" "$BASE/api/fs/list?path=/")" 401
+B=$(json username "$ORIG_USER" password "$PASS")
+check "旧账号密码不能再登录" "$(code POST /api/login "$B")" 401
+B=$(json username e2e-user password "$NEWPASS")
+check "新账号密码可以登录" "$(code POST /api/login "$B")" 200
+B=$(json currentPassword "$NEWPASS" username "$ORIG_USER" newPassword "$PASS")
+check "改回原来的账号密码" "$(code PUT /api/account "$B")" 200
+B=$(json username "$ORIG_USER" password "$PASS")
+check "原账号密码可以登录" "$(code POST /api/login "$B")" 200
+
 rm -rf "$WORK"
 echo
 echo "通过 $PASSED，失败 $FAILED"

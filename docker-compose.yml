@@ -7,8 +7,11 @@ services:
     ports:
       - "${PAN_PORT:-8080}:8080"
     environment:
+      # 首次启动时用来创建管理员账号；之后可以在网页右上角修改，修改后以网页设置为准
       ADMIN_USER: ${ADMIN_USER:-admin}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?请在 .env 中设置 ADMIN_PASSWORD}
+      # 忘记密码时设为 true 并重启，会用上面的账号密码重置；重置后改回 false
+      ADMIN_RESET: ${ADMIN_RESET:-false}
     volumes:
       - ./data:/data
       # 挂载宿主机目录作为“本机存储”，在网页里添加本机存储时根目录填 /mnt/disk

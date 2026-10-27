@@ -24,6 +24,7 @@
         <button data-view="files" class="active">文件</button>
         <button data-view="storages">存储</button>
       </nav>
+      <button id="account-btn" class="ghost" title="账号设置">👤 <span id="account-name"></span></button>
       <button id="logout" class="ghost">退出</button>
     </header>
 
@@ -72,6 +73,22 @@
       <div class="row">
         <button type="button" id="storage-cancel" class="ghost">取消</button>
         <button class="primary" value="save">保存</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="account-dialog">
+    <form id="account-form" class="card" autocomplete="off">
+      <h2>账号设置</h2>
+      <label>用户名<input name="username" autocomplete="username" required maxlength="32"></label>
+      <label>新密码<input name="newPassword" type="password" autocomplete="new-password" placeholder="留空表示不修改" minlength="8" maxlength="128"></label>
+      <label>确认新密码<input name="confirmPassword" type="password" autocomplete="new-password"></label>
+      <label>当前密码 *<input name="currentPassword" type="password" autocomplete="current-password" required></label>
+      <small class="help">修改后，其他设备上的登录会全部退出。</small>
+      <p class="error" id="account-error"></p>
+      <div class="row">
+        <button type="button" id="account-cancel" class="ghost">取消</button>
+        <button class="primary">保存</button>
       </div>
     </form>
   </dialog>

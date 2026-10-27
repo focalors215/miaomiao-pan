@@ -454,11 +454,48 @@ $('#storage-form').addEventListener('submit', async (e) => {
   }
 });
 
+// ---------- 账号设置 ----------
+
+let currentUser = '';
+
+function setUser(user) {
+  currentUser = user;
+  $('#account-name').textContent = user;
+}
+
+$('#account-btn').addEventListener('click', () => {
+  const form = $('#account-form');
+  form.reset();
+  form.username.value = currentUser;
+  $('#account-error').textContent = '';
+  $('#account-dialog').showModal();
+});
+$('#account-cancel').addEventListener('click', () => $('#account-dialog').close());
+
+$('#account-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const f = e.target;
+  const err = $('#account-error');
+  const username = f.username.value.trim();
+  const newPassword = f.newPassword.value;
+  if (newPassword !== f.confirmPassword.value) return (err.textContent = '两次输入的新密码不一致');
+  if (username === currentUser && !newPassword) return (err.textContent = '没有需要修改的内容');
+  try {
+    const { user } = await api('PUT', '/api/account', { currentPassword: f.currentPassword.value, username, newPassword });
+    setUser(user);
+    $('#account-dialog').close();
+    alert(newPassword ? '已保存，请记住新密码。其他设备需要重新登录。' : '已保存。其他设备需要重新登录。');
+  } catch (e2) {
+    err.textContent = e2.message;
+  }
+});
+
 // ---------- 启动 ----------
 
 async function start() {
   const { user } = await api('GET', '/api/me');
   if (!user) return showLogin();
+  setUser(user);
   $('#login').hidden = true;
   $('#app').hidden = false;
   setView('files');

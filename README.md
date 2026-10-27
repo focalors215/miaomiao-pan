@@ -14,6 +14,7 @@
   - 视频、音频：浏览器播不了的编码（HEVC、AC3/DTS、AVI、WMV……）由服务器用 ffmpeg 实时转码，可以拖动进度。
   - HEIC/TIFF 图片：自动转成 JPEG 显示。
 - **下载方式可选**：S3 和 123云盘可以选“302 重定向”（浏览器直连存储，不占服务器带宽）或“服务器代理”（不暴露存储地址）。
+- **账号**：登录后点右上角的用户名，可以修改用户名和密码。
 - **界面**：适配手机，跟随系统的深色模式。
 
 支持的存储：
@@ -44,8 +45,9 @@ docker compose up -d --build
 
 | 变量 | 默认值 | 说明 |
 | --- | --- | --- |
-| `ADMIN_USER` | `admin` | 管理员用户名 |
-| `ADMIN_PASSWORD` | 无，必填 | 管理员密码 |
+| `ADMIN_USER` | `admin` | 首次启动时创建的管理员用户名 |
+| `ADMIN_PASSWORD` | 无，必填 | 首次启动时创建的管理员密码 |
+| `ADMIN_RESET` | `false` | 忘记密码时设为 `true` 并重启，会用上面两项重置账号；重置后改回 `false` |
 | `PAN_PORT` | `8080` | 宿主机上对外的端口 |
 
 需要时可以加到 `docker-compose.yml` 的 `environment` 里：
@@ -55,6 +57,22 @@ docker compose up -d --build
 | `TRUST_PROXY` | `false` | 放在 Nginx/Caddy 等 HTTPS 反向代理后面时设为 `true`，登录 Cookie 会带上 `Secure` |
 | `DATA_DIR` | `/data` | 配置文件目录 |
 | `FFMPEG_PATH` / `FFPROBE_PATH` | `ffmpeg` / `ffprobe` | ffmpeg 可执行文件位置（镜像里已经装好） |
+
+### 修改账号密码
+
+- **修改入口：** 登录后点右上角的用户名，输入当前密码即可修改用户名和/或密码。新密码至少 8 位。
+- **对已登录设备的影响：** 修改后，其他设备上的登录全部失效，当前设备保持登录。
+- **与 `.env` 的关系：** `.env` 里的 `ADMIN_USER`、`ADMIN_PASSWORD` 只在第一次启动时用来创建账号。之后以网页里改过的为准，改 `.env` 不会生效。
+- **密码存储：** 密码用 scrypt 加盐哈希保存，配置文件里没有明文。
+- **防暴力破解：** 同一 IP 15 分钟内输错 10 次密码，会被锁定 15 分钟。
+
+**忘记密码：** 在 `.env` 里设置新的 `ADMIN_PASSWORD`，再加上 `ADMIN_RESET=true`，然后重启：
+
+```bash
+docker compose up -d
+```
+
+能登录后，把 `ADMIN_RESET` 改回 `false` 再重启一次，否则以后每次重启都会重置。
 
 ### 数据和备份
 
@@ -179,7 +197,7 @@ bash test/e2e.sh http://127.0.0.1:8080 管理员密码 /123     # 额外测试�
 ```
 
 测试脚本覆盖了这些内容：
-- **登录：** 鉴权。
+- **登录和账号：** 鉴权、修改用户名和密码（测完会改回原来的）。
 - **文件操作：** 上传 20MB 文件并校验 MD5、Range 下载、重命名、删除。
 - **安全：** 路径穿越防护。
 - **下载方式：** 302 和代理之间的切换。
@@ -213,6 +231,7 @@ bash test/e2e.sh http://127.0.0.1:8080 管理员密码 /123     # 额外测试�
 | --- | --- | --- |
 | POST | `/api/login` | `{username, password}` |
 | POST | `/api/logout` | 退出登录 |
+| PUT | `/api/account` | `{currentPassword, username?, newPassword?}`，修改用户名和/或密码 |
 | GET | `/api/fs/list?path=` | 列目录 |
 | GET | `/api/fs/download?path=[&inline=1][&proxy=1]` | 下载；`inline=1` 用于预览，`proxy=1` 强制经服务器中转 |
 | GET | `/api/fs/d/<路径>` | 路径式下载地址（HLS 播放用） |

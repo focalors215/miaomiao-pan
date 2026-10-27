@@ -81,6 +81,7 @@ label.check input { width: auto; margin: 0; }
   position: sticky; top: 0; z-index: 2;
 }
 .brand { font-size: 16px; }
+#account-name { display: inline-block; max-width: 10em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
 .tabs { display: flex; gap: 4px; flex: 1; }
 .tabs button { border-color: transparent; background: transparent; }
 .tabs button.active { background: var(--hover); font-weight: 600; }

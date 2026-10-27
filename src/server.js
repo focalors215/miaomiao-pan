@@ -2,7 +2,7 @@ import express from 'express';
 import busboy from 'busboy';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { login, logout, currentUser, requireAuth } from './auth.js';
+import { login, logout, currentUser, requireAuth, updateAccount } from './auth.js';
 import * as vfs from './vfs.js';
 import { HttpError } from './vfs.js';
 import { DRIVER_TYPES } from './drivers/index.js';
@@ -36,6 +36,9 @@ app.get('/api/me', (req, res) => res.json({ user: currentUser(req) }));
 
 const api = express.Router();
 api.use(requireAuth);
+
+// ---------- 账号 ----------
+api.put('/account', updateAccount);
 
 // ---------- 文件操作 ----------
 api.get('/fs/list', async (req, res) => {
