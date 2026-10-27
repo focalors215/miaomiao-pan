@@ -165,6 +165,96 @@ check "代理模式文件内容正确" "$(cat "$WORK/proxy.txt")" "测试 网盘
 B=$(json paths '["/s3/小文件.txt"]')
 check "打码后原密钥仍可用（删除成功）" "$(code POST /api/fs/delete "$B")" 200
 
+echo "== 注册与用户空间"
+SID_LOCAL=$(req "$BASE/api/storages" | jq_ 'j.find(x=>x.mountPath=="/本地").id')
+SID_DAV=$(req "$BASE/api/storages" | jq_ 'j.find(x=>x.mountPath=="/dav").id')
+B=$(json registration '{"open":false,"inviteCode":""}')
+code PUT /api/settings "$B" >/dev/null
+TU="e2e$RANDOM"; TP="userpass-$RANDOM"
+B=$(json username "$TU" password "$TP")
+check "未开放时不能注册" "$(curl -s -o /dev/null -w '%{http_code}' -H 'Content-Type: application/json' -X POST "$BASE/api/register" -d "$B")" 403
+B=$(json registration '{"open":true,"inviteCode":"e2e-invite"}' privateSpace "{\"storageId\":\"$SID_LOCAL\",\"dir\":\"/e2e-users\"}" publicSpace "{\"storageId\":\"$SID_DAV\",\"dir\":\"/\",\"writable\":true}")
+check "管理员开放注册并设置空间" "$(code PUT /api/settings "$B")" 200
+check "登录页能看到需要邀请码" "$(curl -s "$BASE/api/register" | jq_ 'j.open+"/"+j.needInvite')" "true/true"
+B=$(json username "$TU" password "$TP" inviteCode wrong)
+check "邀请码错误被拒绝" "$(curl -s -o /dev/null -w '%{http_code}' -H 'Content-Type: application/json' -X POST "$BASE/api/register" -d "$B")" 403
+B=$(json username "$TU" password short inviteCode e2e-invite)
+check "密码太短被拒绝" "$(curl -s -o /dev/null -w '%{http_code}' -H 'Content-Type: application/json' -X POST "$BASE/api/register" -d "$B")" 400
+ADMIN_JAR=$JAR; JAR=$WORK/user-cookie
+B=$(json username "$TU" password "$TP" inviteCode e2e-invite)
+check "注册成功" "$(code POST /api/register "$B")" 200
+check "重名不能注册" "$(curl -s -o /dev/null -w '%{http_code}' -H 'Content-Type: application/json' -X POST "$BASE/api/register" -d "$B")" 409
+check "普通用户根目录只有两个空间" "$(names /)" "公共空间,我的空间"
+check "私人空间自动创建且为空" "$(names /我的空间)" ""
+check "看不到管理员的挂载" "$(req -o /dev/null -w '%{http_code}' -G "$BASE/api/fs/list" --data-urlencode 'path=/本地')" 404
+check "不能管理存储" "$(req -o /dev/null -w '%{http_code}' "$BASE/api/storages")" 403
+check "不能修改系统设置" "$(code PUT /api/settings '{}')" 403
+check "上传到我的空间" "$(upload /我的空间 "$WORK/小文件.txt")" 200
+check "上传到公共空间" "$(upload /公共空间 "$WORK/小文件.txt")" 200
+JAR=$ADMIN_JAR
+check "管理员在存储里能看到用户的文件" "$(names "/本地/e2e-users/$TU")" "小文件.txt"
+B=$(json publicSpace "{\"storageId\":\"$SID_DAV\",\"dir\":\"/\",\"writable\":false}")
+code PUT /api/settings "$B" >/dev/null
+JAR=$WORK/user-cookie
+B=$(json path /公共空间 name 只读测试.txt size 10 lastModified 1)
+check "公共空间设为只读后不能上传" "$(code POST /api/uploads "$B")" 403
+check "只读公共空间不能新建文件夹" "$(code POST /api/fs/mkdir "$(json path /公共空间 name 新文件夹)")" 403
+check "只读公共空间仍可下载" "$(download /公共空间/小文件.txt "$WORK/pub.txt"; cat "$WORK/pub.txt")" "200测试 网盘 中文"
+
+echo "== 回收站"
+B=$(json paths '["/我的空间/小文件.txt"]')
+check "删除移到回收站" "$(code POST /api/fs/delete "$B")" 200
+check "删除后不在原位置" "$(names /我的空间)" ""
+TID=$(req "$BASE/api/trash" | jq_ 'j[0]&&j[0].id')
+check "回收站里能看到" "$(req "$BASE/api/trash" | jq_ 'j.map(x=>x.name+"@"+x.from+"@"+x.daysLeft).join(",")')" "小文件.txt@/我的空间@30"
+check "管理员看不到别人的回收站" "$(curl -s -b "$ADMIN_JAR" "$BASE/api/trash" | jq_ 'j.filter(x=>x.id=="'"$TID"'").length')" 0
+check "回收站目录不能直接访问" "$(req -o /dev/null -w '%{http_code}' -G "$BASE/api/fs/list" --data-urlencode 'path=/我的空间/.pan-trash')" 404
+upload /我的空间 "$WORK/小文件.txt" >/dev/null
+check "还原（原位置有同名文件时自动改名）" "$(req -X POST "$BASE/api/trash/$TID/restore" | jq_ 'j.name')" "小文件 (恢复).txt"
+check "还原后两个文件都在" "$(names /我的空间)" "小文件 (恢复).txt,小文件.txt"
+B=$(json paths '["/我的空间/小文件 (恢复).txt"]')
+code POST /api/fs/delete "$B" >/dev/null
+TID=$(req "$BASE/api/trash" | jq_ 'j[0].id')
+check "彻底删除" "$(req -o /dev/null -w '%{http_code}' -X DELETE "$BASE/api/trash/$TID")" 200
+check "彻底删除后回收站为空" "$(req "$BASE/api/trash" | jq_ 'j.length')" 0
+
+echo "== 分享和直链"
+B=$(json path /我的空间/小文件.txt type share code abcd days 7)
+SHR=$(req -X POST "$BASE/api/shares" -d "$B"); SHID=$(echo "$SHR" | jq_ 'j.id')
+check "创建带提取码的分享" "$(echo "$SHR" | jq_ 'j.code+" "+j.url.startsWith("/s/")')" "abcd true"
+check "分享页能打开" "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/s/$SHID")" 200
+check "公开信息需要提取码" "$(curl -s "$BASE/api/public/share/$SHID" | jq_ 'j.name+" "+j.needCode+" "+j.unlocked')" "小文件.txt true false"
+check "未输入提取码不能下载" "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/api/public/share/$SHID/download")" 401
+check "提取码错误" "$(curl -s -o /dev/null -w '%{http_code}' -H 'Content-Type: application/json' -X POST "$BASE/api/public/share/$SHID/unlock" -d '{"code":"zzzz"}')" 403
+VJ=$WORK/visitor
+curl -s -c "$VJ" -o /dev/null -H 'Content-Type: application/json' -X POST "$BASE/api/public/share/$SHID/unlock" -d '{"code":"ABCD"}'
+check "提取码不区分大小写，解锁后能下载" "$(curl -s -b "$VJ" "$BASE/api/public/share/$SHID/download")" "测试 网盘 中文"
+B=$(json path /我的空间/小文件.txt type direct days 1)
+DURL=$(req -X POST "$BASE/api/shares" -d "$B" | jq_ 'j.url')
+check "直链直接返回文件" "$(curl -s "$BASE$DURL")" "测试 网盘 中文"
+B=$(json path /我的空间 type direct days 1)
+check "空间本身不能分享" "$(code POST /api/shares "$B")" 400
+mkdir_b=$(json path /我的空间 name 分享文件夹); code POST /api/fs/mkdir "$mkdir_b" >/dev/null
+B=$(json path /我的空间/分享文件夹 type direct days 1)
+check "文件夹不能用直链" "$(code POST /api/shares "$B")" 400
+B=$(json path /我的空间/小文件.txt type share code 1 days 7)
+check "提取码格式不对被拒绝" "$(code POST /api/shares "$B")" 400
+B=$(json path /我的空间/小文件.txt type share days 3)
+check "有效期只能选 1/7/30/永久" "$(code POST /api/shares "$B")" 400
+check "统计访问和下载次数" "$(req "$BASE/api/shares" | jq_ 'j.map(x=>x.type+":"+x.views+"/"+x.downloads).sort().join(",")')" "direct:1/1,share:1/1"
+check "未登录不能取消分享" "$(curl -s -o /dev/null -w '%{http_code}' -X DELETE "$BASE/api/shares/$SHID")" 401
+check "取消分享" "$(req -o /dev/null -w '%{http_code}' -X DELETE "$BASE/api/shares/$SHID")" 200
+check "取消后链接失效" "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/api/public/share/$SHID")" 404
+JAR=$ADMIN_JAR
+
+echo "== 清理测试用户"
+TUID=$(req "$BASE/api/users" | jq_ 'j.find(x=>x.username=="'"$TU"'").id')
+check "管理员停用用户后对方被登出" "$(code PUT "/api/users/$TUID" '{"disabled":true}'; curl -s -o /dev/null -w '%{http_code}' -b "$WORK/user-cookie" "$BASE/api/fs/list?path=/")" "200401"
+check "删除用户" "$(req -o /dev/null -w '%{http_code}' -X DELETE "$BASE/api/users/$TUID")" 200
+check "被删用户的直链失效" "$(curl -s -o /dev/null -w '%{http_code}' "$BASE$DURL")" 404
+B=$(json registration '{"open":false,"inviteCode":""}' privateSpace '{"storageId":"","dir":"/users"}' publicSpace '{"storageId":"","dir":"/","writable":true}')
+code PUT /api/settings "$B" >/dev/null
+
 echo "== 修改账号"
 ORIG_USER=$(req "$BASE/api/me" | jq_ 'j.user')
 NEWPASS="${PASS}-e2e"

@@ -86,11 +86,19 @@ export class S3Driver {
   }
 
   // S3 没有重命名，只能复制后删除（目录需逐个对象处理）
+  // S3 没有重命名和移动，只能逐个对象复制后删除
   async rename(p, newName) {
-    const parent = p.replace(/\/[^/]*$/, '');
+    await this.relocate(p, `${p.replace(/\/[^/]*$/, '')}/${newName}`);
+  }
+
+  async move(p, toDir) {
+    await this.relocate(p, `${toDir.replace(/\/+$/, '')}/${p.split('/').pop()}`);
+  }
+
+  async relocate(p, dest) {
     const dir = await this.isDir(p);
     const from = dir ? this.key(p, true) : this.key(p);
-    const to = dir ? this.key(`${parent}/${newName}`, true) : this.key(`${parent}/${newName}`);
+    const to = dir ? this.key(dest, true) : this.key(dest);
     const keys = await this.keysUnder(p);
     for (const k of keys) {
       const source = `${this.bucket}/${k}`.split('/').map(encodeURIComponent).join('/');

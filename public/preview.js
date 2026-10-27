@@ -229,7 +229,7 @@ async function renderMedia(container, ctx) {
 
     // 4. 服务器实时转码
     sp.text('服务器转码中，首次加载需要几秒…');
-    const r = await fetch('/api/fs/transcode', {
+    const r = await fetch(urls.transcode || '/api/fs/transcode', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ path: ctx.path }),

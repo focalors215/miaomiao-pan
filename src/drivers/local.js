@@ -35,6 +35,17 @@ export class LocalDriver {
     await fsp.mkdir(path.join(this.abs(dir), name));
   }
 
+  async move(p, toDir) {
+    const from = this.abs(p);
+    const to = path.join(this.abs(toDir), path.basename(from));
+    if (fs.existsSync(to)) throw Object.assign(new Error('目标位置已有同名文件'), { code: 'EEXIST' });
+    await fsp.rename(from, to).catch(async (e) => {
+      if (e.code !== 'EXDEV') throw e; // 跨磁盘时只能复制后删除
+      await fsp.cp(from, to, { recursive: true });
+      await fsp.rm(from, { recursive: true, force: true });
+    });
+  }
+
   async rename(p, newName) {
     const from = this.abs(p);
     const to = path.join(path.dirname(from), newName);

@@ -59,8 +59,9 @@ for (const f of fs.readdirSync(DIR)) {
 }
 
 /** 创建（或续传）上传任务 */
-export async function init({ path: dir, name, size, lastModified }) {
-  vfs.mustResolve(dir); // 目标目录必须在某个挂载点下
+/** 创建（或续传）上传任务。sc 是当前用户的 scope（决定能写哪里） */
+export async function init(user, sc, { path: dir, name, size, lastModified }) {
+  const r = await sc.resolve(dir, { write: true }); // 目标目录必须可写
   name = vfs.validName(String(name || ''));
   size = Number(size);
   if (!Number.isSafeInteger(size) || size < 0) throw new HttpError(400, '文件大小不正确');
@@ -68,7 +69,7 @@ export async function init({ path: dir, name, size, lastModified }) {
   // 同一个文件得到同一个 id，用于断点续传
   const id = crypto
     .createHash('sha256')
-    .update(JSON.stringify([target, name, size, Number(lastModified) || 0, CHUNK]))
+    .update(JSON.stringify([user.id, r.storage.id, r.inner, name, size, Number(lastModified) || 0, CHUNK]))
     .digest('hex')
     .slice(0, 32);
   let m = sessions.get(id);
@@ -76,7 +77,10 @@ export async function init({ path: dir, name, size, lastModified }) {
   if (!m || m.status === 'done' || !fs.existsSync(partFile(id))) {
     m = {
       id,
-      dir: target,
+      owner: user.id,
+      dir: target, // 用户看到的目录，仅用于日志
+      storageId: r.storage.id,
+      innerDir: r.inner, // 存储内部的目标目录，写入时用它
       name,
       size,
       chunkSize: CHUNK,
@@ -95,15 +99,17 @@ export async function init({ path: dir, name, size, lastModified }) {
   return publicView(m);
 }
 
-function get(id) {
+function get(id, user) {
   const m = sessions.get(id);
   if (!m) throw new HttpError(404, '上传任务不存在或已过期，请重新上传');
+  // 只能操作自己的上传任务（旧版任务没有 owner，只有管理员能继续）
+  if (m.owner ? m.owner !== user.id : user.role !== 'admin') throw new HttpError(404, '上传任务不存在或已过期，请重新上传');
   return m;
 }
 
 /** 接收一个块：请求体是原始二进制 */
-export async function putChunk(id, index, req) {
-  const m = get(id);
+export async function putChunk(user, id, index, req) {
+  const m = get(id, user);
   if (m.status !== 'uploading') throw new HttpError(409, '这个上传任务已经在处理或已完成');
   index = Number(index);
   if (!Number.isInteger(index) || index < 0 || index >= m.chunks) throw new HttpError(400, '块序号不正确');
@@ -129,8 +135,8 @@ export async function putChunk(id, index, req) {
 }
 
 /** 所有块到齐后，后台把文件写入存储；立即返回，进度用 status() 查 */
-export function complete(id) {
-  const m = get(id);
+export function complete(user, id) {
+  const m = get(id, user);
   if (m.status === 'processing' || m.status === 'done') return publicView(m);
   const missing = m.received.findIndex((ok) => !ok);
   if (missing >= 0) throw new HttpError(400, `还有块没有上传（第 ${missing + 1} 块）`);
@@ -139,7 +145,7 @@ export function complete(id) {
   persist(m);
   (async () => {
     try {
-      const { driver, inner } = vfs.mustResolve(m.dir);
+      const { driver, inner } = m.storageId ? { driver: vfs.getDriver(m.storageId), inner: m.innerDir } : vfs.mustResolve(m.dir);
       const file = partFile(id);
       // 第 5 个参数把临时文件路径告诉驱动，123云盘驱动可以直接用它算 MD5，免得再复制一遍
       await driver.upload(inner, m.name, fs.createReadStream(file), m.size, { file });
@@ -157,13 +163,13 @@ export function complete(id) {
   return publicView(m);
 }
 
-export function status(id) {
-  return publicView(get(id));
+export function status(user, id) {
+  return publicView(get(id, user));
 }
 
-export async function cancel(id) {
-  const m = sessions.get(id);
-  if (!m) return;
+export async function cancel(user, id) {
+  if (!sessions.has(id)) return;
+  const m = get(id, user);
   if (m.status === 'processing') throw new HttpError(409, '正在写入存储，不能取消');
   await drop(m);
 }

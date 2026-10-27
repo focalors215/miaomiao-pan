@@ -110,6 +110,14 @@ export class Pan123Driver {
     this.invalidate(parent.fileId);
   }
 
+  async move(p, toDir) {
+    const node = await this.lookup(p);
+    const dest = await this.lookup(toDir);
+    await this.api('POST', '/api/v1/file/move', { body: { fileIDs: [node.fileId], toParentFileID: dest.fileId } });
+    this.invalidate(node.parentFileId);
+    this.invalidate(dest.fileId);
+  }
+
   async rename(p, newName) {
     const node = await this.lookup(p);
     await this.api('PUT', '/api/v1/file/name', { body: { fileId: node.fileId, fileName: newName } });

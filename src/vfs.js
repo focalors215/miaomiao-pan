@@ -14,9 +14,14 @@ export class HttpError extends Error {
 }
 
 /** 规范化用户传入的路径，禁止 .. 跳出 */
+// 回收站目录：放在每个存储的根目录，对所有用户隐藏，不能通过普通路径访问
+export const TRASH_DIR = '.pan-trash';
+const isTrashName = (s) => s.toLowerCase() === TRASH_DIR;
+
 export function normalize(p) {
   const segs = String(p || '/').split('/').filter(Boolean);
   if (segs.some((s) => s === '..' || s === '.')) throw new HttpError(400, '非法路径');
+  if (segs.some(isTrashName)) throw new HttpError(404, '路径不存在');
   return '/' + segs.join('/');
 }
 
@@ -24,7 +29,38 @@ export function validName(name) {
   if (!name || /[\\/]/.test(name) || name === '.' || name === '..' || name.length > 255) {
     throw new HttpError(400, '非法文件名');
   }
+  if (isTrashName(name)) throw new HttpError(400, '这个名称是系统保留的');
   return name;
+}
+
+/** 列目录时去掉系统保留的回收站目录 */
+export function hideReserved(items) {
+  return items.filter((i) => !isTrashName(i.name));
+}
+
+export function getStorage(id) {
+  return getConfig().storages.find((s) => s.id === id) || null;
+}
+
+/** 按存储 id 取驱动；存储不存在或已停用时抛出 */
+export function getDriver(id) {
+  const d = drivers.get(id);
+  if (!d) throw new HttpError(503, getStorage(id) ? '这个存储已停用或挂载失败' : '这个存储已被移除');
+  return d;
+}
+
+/** 逐级创建目录（已存在的跳过），inner 是存储内部路径 */
+export async function ensureDir(driver, inner) {
+  let cur = '/';
+  for (const seg of String(inner).split('/').filter(Boolean)) {
+    const items = await driver.list(cur).catch(() => []);
+    if (!items.some((i) => i.name === seg && i.isDir)) {
+      await driver.mkdir(cur, seg).catch((e) => {
+        if (e.code !== 'EEXIST' && !/exist|已存在|重名/i.test(e.message)) throw e;
+      });
+    }
+    cur = path.posix.join(cur, seg);
+  }
 }
 
 function makeDriver(storage) {
@@ -97,7 +133,7 @@ export async function list(p) {
     if (!virt.length && normalize(p) !== '/') throw new HttpError(404, '路径不存在');
     return virt;
   }
-  const items = await r.driver.list(r.inner);
+  const items = hideReserved(await r.driver.list(r.inner));
   const names = new Set(items.map((i) => i.name));
   return [...items, ...virt.filter((v) => !names.has(v.name))];
 }

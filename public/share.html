@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#FFF6EA" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#14161B" media="(prefers-color-scheme: dark)">
+  <meta name="robots" content="noindex">
+  <title>分享 · 喵喵零和小鱼的仓库</title>
+  <link rel="icon" href="/img/icon-64.png" type="image/png">
+  <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body class="share-page">
+  <header class="topbar glass">
+    <a class="brand" href="/" aria-label="喵喵零和小鱼的仓库">
+      <img class="brand-mark" src="/img/mascot-sm.webp" width="200" height="161" alt="">
+      <span class="brand-text"><span class="b-cat">喵喵零</span>和<span class="b-fish">小鱼</span>的仓库</span>
+    </a>
+    <a class="btn small share-login" href="/">登录</a>
+  </header>
+
+  <main class="share-main">
+    <!-- 加载中 -->
+    <div id="s-loading" class="share-center"><div class="spinner" aria-label="加载中"></div></div>
+
+    <!-- 出错：不存在 / 已过期 -->
+    <section id="s-error" class="card share-card share-center-card" hidden>
+      <img class="share-mascot" src="/img/mascot.webp" width="640" height="514" alt="">
+      <h1 id="s-error-title">分享不存在</h1>
+      <p id="s-error-sub" class="page-sub"></p>
+      <a class="btn primary" href="/">去仓库首页</a>
+    </section>
+
+    <!-- 输入提取码 -->
+    <form id="s-lock" class="card share-card share-center-card" hidden novalidate>
+      <img class="share-mascot" src="/img/mascot.webp" width="640" height="514" alt="">
+      <h1 id="s-lock-title">请输入提取码</h1>
+      <p id="s-lock-sub" class="page-sub"></p>
+      <label class="field code-field">
+        <span class="sr-only">提取码</span>
+        <svg class="field-icon"><use href="/icons.svg#i-lock"/></svg>
+        <input name="code" maxlength="8" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="提取码" required>
+      </label>
+      <button class="btn primary large" type="submit">查看文件</button>
+      <p class="error" id="s-lock-error" role="alert"></p>
+    </form>
+
+    <!-- 单个文件 -->
+    <section id="s-file" class="card share-card share-center-card" hidden>
+      <div id="s-file-icon" class="share-file-icon"></div>
+      <h1 id="s-file-name" class="share-file-name"></h1>
+      <p id="s-file-meta" class="page-sub"></p>
+      <div class="share-actions">
+        <button id="s-file-preview" class="btn" hidden><svg><use href="/icons.svg#i-eye"/></svg><span>在线预览</span></button>
+        <a id="s-file-download" class="btn primary"><svg><use href="/icons.svg#i-download"/></svg><span>下载</span></a>
+      </div>
+    </section>
+
+    <!-- 文件夹 -->
+    <section id="s-folder" class="view share-folder" hidden>
+      <div class="page-head">
+        <div>
+          <h1 class="page-title" id="s-folder-name"></h1>
+          <p class="page-sub" id="s-folder-meta"></p>
+        </div>
+      </div>
+      <div class="toolbar"><nav id="s-crumbs" class="crumbs" aria-label="当前位置"></nav></div>
+      <div class="card table-card">
+        <table class="table share-files">
+          <thead><tr><th class="col-name">文件名</th><th class="col-size">大小</th><th class="col-time">修改时间</th><th class="col-act">操作</th></tr></thead>
+          <tbody id="s-rows"></tbody>
+        </table>
+        <div id="s-empty" class="empty" hidden>
+          <div class="empty-art" aria-hidden="true"><img src="/img/mascot.webp" width="640" height="514" alt=""></div>
+          <p class="empty-title">这个文件夹是空的</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+
+  <!-- 预览（和主界面同一套） -->
+  <dialog id="preview" class="preview">
+    <header class="pv-bar">
+      <strong id="pv-name" class="pv-name"></strong>
+      <span id="pv-status" class="pv-status"></span>
+      <span id="pv-count" class="pv-count"></span>
+      <a id="pv-download" class="pv-btn" title="下载"><svg><use href="/icons.svg#i-download"/></svg><span>下载</span></a>
+      <button id="pv-close" class="pv-btn" aria-label="关闭"><svg><use href="/icons.svg#i-close"/></svg></button>
+    </header>
+    <div id="pv-body" class="pv-body" tabindex="-1" autofocus></div>
+    <button id="pv-prev" class="pv-nav prev" aria-label="上一个"><svg><use href="/icons.svg#i-chevron"/></svg></button>
+    <button id="pv-next" class="pv-nav next" aria-label="下一个"><svg><use href="/icons.svg#i-chevron"/></svg></button>
+  </dialog>
+
+  <script src="/share.js" type="module"></script>
+</body>
+</html>

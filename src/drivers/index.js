@@ -1,6 +1,7 @@
 // 存储驱动注册表。每个驱动实现：
 //   list(dir) -> [{ name, isDir, size, modified }]
 //   mkdir(dir, name) / rename(path, newName) / remove(path)
+//   move(path, toDir)  —— 把文件或文件夹移到另一个目录（保留原名），回收站用
 //   upload(dir, name, stream, size, { file? })  —— file：完整文件已在本地时的路径（分块上传），驱动可以直接读它
 //   download(path, req, res, { name, inline, proxy })  —— 自行负责响应（转发数据流或 302 跳转）
 //       inline：预览（浏览器内显示）；proxy：强制服务器代理（302 目标浏览器访问不到时用）

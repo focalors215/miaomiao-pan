@@ -1,10 +1,6 @@
 import { renderPreview as renderMedia } from './preview.js';
+import { $, $$, sleep, reduceMotion, use, esc, fmtSize, fmtTime, join, kindOf, fileIcon } from './common.js';
 
-const $ = (s) => document.querySelector(s);
-const $$ = (s) => [...document.querySelectorAll(s)];
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
-const use = (id, cls = '') => `<svg class="${cls}" aria-hidden="true"><use href="#${id}"/></svg>`;
 
 async function api(method, url, body) {
   const r = await fetch(url, {
@@ -16,81 +12,6 @@ async function api(method, url, body) {
   if (r.status === 401 && url !== '/api/login') showLogin();
   if (!r.ok) throw new Error(data.error || `请求失败 (${r.status})`);
   return data;
-}
-
-function esc(s) {
-  return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-}
-
-function fmtSize(n) {
-  if (!n) return '—';
-  const u = ['B', 'KB', 'MB', 'GB', 'TB'];
-  let i = 0;
-  while (n >= 1024 && i < u.length - 1) {
-    n /= 1024;
-    i++;
-  }
-  return `${n.toFixed(i ? 1 : 0)} ${u[i]}`;
-}
-
-function fmtTime(s) {
-  if (!s) return '—';
-  const d = new Date(s);
-  const p = (n) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}  ${p(d.getHours())}:${p(d.getMinutes())}`;
-}
-
-function join(dir, name) {
-  return (dir === '/' ? '' : dir) + '/' + name;
-}
-
-// ==========================================================================
-// 文件类型和图标
-// ==========================================================================
-
-// 浏览器不支持的格式（HEIC、AVI、AC3……）由服务器转换/转码后播放
-const KINDS = {
-  image: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'avif', 'svg', 'ico', 'heic', 'heif', 'tif', 'tiff'],
-  video: [
-    'mp4', 'm4v', 'webm', 'mov', 'mkv', 'ogv', 'm3u8', 'avi', 'wmv', 'flv', 'f4v', 'm2ts', 'mts',
-    '3gp', 'mpg', 'mpeg', 'vob', 'rm', 'rmvb', 'asf', 'divx', 'xvid',
-  ],
-  audio: ['mp3', 'm4a', 'aac', 'flac', 'wav', 'ogg', 'opus', 'ape', 'wma', 'ac3', 'dts', 'aiff', 'aif', 'amr', 'mka', 'wv', 'tta'],
-  pdf: ['pdf'],
-};
-
-/** 可预览的文件类型：image / video / audio / pdf，不可预览返回 null */
-function kindOf(name) {
-  const ext = name.includes('.') ? name.split('.').pop().toLowerCase() : '';
-  return Object.keys(KINDS).find((k) => KINDS[k].includes(ext)) || null;
-}
-
-const GLYPH = {
-  image: '<path d="M4 17l4.5-5 3.5 4 2.5-3 5.5 6H4z" fill="#fff"/><circle cx="15.5" cy="8.5" r="2" fill="#fff"/>',
-  video: '<path d="M9 7.5v9l7.5-4.5z" fill="#fff"/>',
-  audio: '<path d="M10 16.5V6.5l8-2v10" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"/><circle cx="8" cy="16.5" r="2.5" fill="#fff"/><circle cx="16" cy="14.5" r="2.5" fill="#fff"/>',
-  pdf: '<text x="12" y="16" text-anchor="middle" font-size="8.5" font-weight="800" fill="#fff" font-family="-apple-system,sans-serif">PDF</text>',
-  zip: '<path d="M11 3h2v2h-2zm0 4h2v2h-2zm0 4h2v2h-2z" fill="#fff"/><rect x="9.5" y="14" width="5" height="5" rx="1.2" fill="none" stroke="#fff" stroke-width="1.8"/>',
-  text: '<path d="M7 8h10M7 12h10M7 16h6" stroke="#fff" stroke-width="2" stroke-linecap="round"/>',
-  code: '<path d="M9.5 8 6 12l3.5 4m5-8 3.5 4-3.5 4" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
-  file: '<path d="M8 4.5h5.5L17 8v11.5H8z" fill="none" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/>',
-};
-const FILE_COLORS = { image: '#38A9F5', video: '#8B5CF6', audio: '#EC4899', pdf: '#EF4444', zip: '#22A35A', text: '#3B82F6', code: '#64748B', file: '#94A3B8' };
-const EXT_GROUP = {
-  zip: ['zip', 'rar', '7z', 'gz', 'tar', 'bz2', 'xz', 'tgz'],
-  text: ['txt', 'md', 'doc', 'docx', 'rtf', 'pages', 'csv', 'xls', 'xlsx', 'numbers', 'ppt', 'pptx', 'key'],
-  code: ['js', 'ts', 'json', 'html', 'css', 'py', 'go', 'java', 'c', 'cpp', 'sh', 'yml', 'yaml', 'xml'],
-};
-
-function fileIcon(it) {
-  if (it.isDir) {
-    const color = it.mount ? '#6FA4FF' : '#FFC94D';
-    const tab = it.mount ? '#4C8DF7' : '#F5B731';
-    return `<span class="ficon dir"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M4 11a3 3 0 0 1 3-3h8.5l3.2 3.2H33a3 3 0 0 1 3 3V30a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3z" fill="${tab}"/><path d="M4 15.5a3 3 0 0 1 3-3h26a3 3 0 0 1 3 3V30a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3z" fill="${color}"/></svg></span>`;
-  }
-  const ext = it.name.includes('.') ? it.name.split('.').pop().toLowerCase() : '';
-  const kind = kindOf(it.name) || Object.keys(EXT_GROUP).find((g) => EXT_GROUP[g].includes(ext)) || 'file';
-  return `<span class="ficon" style="background:${FILE_COLORS[kind]}"><svg viewBox="0 0 24 24" aria-hidden="true">${GLYPH[kind]}</svg></span>`;
 }
 
 const fileUrl = (p, inline = false) => `/api/fs/download?path=${encodeURIComponent(p)}${inline ? '&inline=1' : ''}`;
@@ -200,12 +121,15 @@ document.addEventListener('click', (e) => {
   const show = input.type === 'password';
   input.type = show ? 'text' : 'password';
   eye.setAttribute('aria-label', show ? '隐藏密码' : '显示密码');
-  eye.querySelector('use').setAttribute('href', show ? '#i-eye' : '#i-eye-off');
+  eye.querySelector('use').setAttribute('href', show ? '/icons.svg#i-eye' : '/icons.svg#i-eye-off');
 });
 
 // ==========================================================================
 // 登录
 // ==========================================================================
+
+let authMode = 'login';
+let regInfo = { open: false, needInvite: false };
 
 function showLogin() {
   $('#app').hidden = true;
@@ -213,21 +137,56 @@ function showLogin() {
   closeMenu(true);
   document.title = '登录 · 喵喵零和小鱼的仓库';
   setTimeout(() => $('#login-form').username.focus(), 50);
+  // 管理员开放注册时才显示“注册”
+  api('GET', '/api/register')
+    .then((r) => {
+      regInfo = r;
+      $('#auth-tabs').hidden = !r.open;
+      $('#invite-field').hidden = !r.needInvite;
+      if (!r.open) setAuthMode('login');
+      requestAnimationFrame(() => syncSegmented($('#auth-tabs')));
+    })
+    .catch(() => {});
 }
+
+function setAuthMode(mode) {
+  authMode = mode;
+  const f = $('#login-form');
+  const reg = mode === 'register';
+  selectSegment($('#auth-tabs'), (b) => b.dataset.mode === mode);
+  $('.reg-only').hidden = !reg;
+  $('#auth-submit').textContent = reg ? '注 册' : '登 录';
+  $('#forgot').hidden = reg;
+  f.password.autocomplete = reg ? 'new-password' : 'current-password';
+  f.password.placeholder = reg ? '密码（至少 8 位）' : '密码';
+  $('#login-error').textContent = '';
+}
+$('#auth-tabs').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-mode]');
+  if (b) setAuthMode(b.dataset.mode);
+});
 
 $('#login-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const f = e.target;
-  const btn = f.querySelector('button[type="submit"]');
-  if (!f.username.value || !f.password.value) return ($('#login-error').textContent = '请输入用户名和密码');
+  const btn = $('#auth-submit');
+  const err = $('#login-error');
+  const reg = authMode === 'register';
+  if (!f.username.value.trim() || !f.password.value) return (err.textContent = '请输入用户名和密码');
+  if (reg && f.password.value.length < 8) return (err.textContent = '密码至少 8 位');
+  if (reg && f.password.value !== f.confirm.value) return (err.textContent = '两次输入的密码不一致');
+  if (reg && regInfo.needInvite && !f.inviteCode.value.trim()) return (err.textContent = '请输入邀请码');
   btn.disabled = true;
   try {
-    await api('POST', '/api/login', { username: f.username.value, password: f.password.value, remember: f.remember.checked });
-    $('#login-error').textContent = '';
-    f.password.value = '';
-    start();
-  } catch (err) {
-    $('#login-error').textContent = err.message;
+    const body = { username: f.username.value.trim(), password: f.password.value, remember: f.remember.checked };
+    if (reg) await api('POST', '/api/register', { ...body, inviteCode: f.inviteCode.value.trim() });
+    else await api('POST', '/api/login', body);
+    err.textContent = '';
+    f.password.value = f.confirm.value = '';
+    await start();
+    if (reg) toast(`欢迎你，${body.username}！`);
+  } catch (e2) {
+    err.textContent = e2.message;
     f.animate?.([{ transform: 'translateX(0)' }, { transform: 'translateX(-8px)' }, { transform: 'translateX(8px)' }, { transform: 'translateX(0)' }], {
       duration: reduceMotion() ? 1 : 320,
       easing: 'ease-in-out',
@@ -240,7 +199,7 @@ $('#login-form').addEventListener('submit', async (e) => {
 $('#forgot').addEventListener('click', () =>
   ask({
     title: '忘记密码',
-    message: '请服务器管理员在 .env 里设置新的 ADMIN_PASSWORD，并加上 ADMIN_RESET=true 后重启。登录后把 ADMIN_RESET 改回 false。',
+    message: '普通用户请联系管理员，在“系统设置 › 用户”里为你重置密码。管理员忘记密码：在 .env 里设置新的 ADMIN_PASSWORD，加上 ADMIN_RESET=true 后重启，登录后再把 ADMIN_RESET 改回 false。',
     confirm: true,
     okText: '知道了',
   }),
@@ -291,7 +250,8 @@ $('#menu-settings').addEventListener('click', () => {
 // 视图切换：侧边栏胶囊滑动 + 页面横向滑入
 // ==========================================================================
 
-const VIEWS = ['files', 'storages'];
+const VIEWS = ['files', 'trash', 'shares', 'storages', 'settings'];
+const VIEW_TITLES = { trash: '回收站', shares: '分享管理', storages: '存储挂载', settings: '系统设置' };
 let currentView = null;
 
 function movePill() {
@@ -329,9 +289,8 @@ function setView(view) {
     el.classList.add(VIEWS.indexOf(view) > VIEWS.indexOf(prev) ? 'enter-right' : 'enter-left');
   }
   $('.search').style.visibility = view === 'files' ? '' : 'hidden';
-  if (view === 'storages') document.title = '存储挂载 · 喵喵零和小鱼的仓库';
-  if (view === 'storages') loadStorages();
-  else loadFiles();
+  if (VIEW_TITLES[view]) document.title = `${VIEW_TITLES[view]} · 喵喵零和小鱼的仓库`;
+  ({ files: loadFiles, trash: loadTrash, shares: loadShares, storages: loadStorages, settings: loadSettings })[view]();
 }
 $$('.nav-item').forEach((b) =>
   b.addEventListener('click', () => {
@@ -381,20 +340,25 @@ function renderFiles(animate = false) {
   $('#empty').hidden = items.length > 0;
   $('#empty .empty-title').textContent = q ? `没有找到“${q}”` : '这里还空空的';
   $('#empty .empty-sub').textContent = q ? '换个关键词试试，搜索只在当前文件夹里进行' : '把文件拖到这里，或者点“上传文件”';
+  const readOnly = isReadOnly(p);
+  $('#btn-mkdir').disabled = $('#upload-input').disabled = readOnly || (!isAdmin() && p === '/');
+  $('#btn-mkdir').closest('.actions').classList.toggle('readonly', readOnly || (!isAdmin() && p === '/'));
   $('#file-rows').innerHTML = items
     .map((it, i) => {
       const full = join(p, it.name);
       const href = it.isDir ? `#${encodeURIComponent(full)}` : fileUrl(full);
       const preview = !it.isDir && kindOf(it.name) ? 'data-preview' : '';
       const sel = selected.has(it.name);
-      const check = it.mount
+      const check = it.mount || readOnly
         ? ''
         : `<label class="checkbox"><input type="checkbox" data-check ${sel ? 'checked' : ''} aria-label="选择 ${esc(it.name)}"><span></span></label>`;
-      const actions = it.mount
+      const share = `<button class="act" data-act="share" aria-label="分享 ${esc(it.name)}">${use('i-share')}<span>分享</span></button>`;
+      const edit = readOnly
         ? ''
-        : `<span class="row-actions"><button class="act" data-act="rename" aria-label="重命名 ${esc(it.name)}">${use('i-pencil')}<span>重命名</span></button><button class="act danger" data-act="delete" aria-label="删除 ${esc(it.name)}">${use('i-trash')}<span>删除</span></button></span>`;
+        : `<button class="act" data-act="rename" aria-label="重命名 ${esc(it.name)}">${use('i-pencil')}<span>重命名</span></button><button class="act danger" data-act="delete" aria-label="删除 ${esc(it.name)}">${use('i-trash')}<span>删除</span></button>`;
+      const actions = it.mount ? '' : `<span class="row-actions">${share}${edit}</span>`;
       const style = animate && i < 24 && !reduceMotion() ? ` style="animation-delay:${i * 18}ms"` : '';
-      return `<tr data-path="${esc(full)}" data-name="${esc(it.name)}" class="${animate ? 'row-in' : ''} ${sel ? 'selected' : ''}"${style}>
+      return `<tr data-path="${esc(full)}" data-name="${esc(it.name)}" data-dir="${it.isDir ? 1 : 0}" class="${animate ? 'row-in' : ''} ${sel ? 'selected' : ''}"${style}>
         <td>${check}</td>
         <td><a class="name" href="${href}" ${preview} ${it.isDir ? '' : 'target="_blank" rel="noopener"'}>${fileIcon(it)}<span>${esc(it.name)}</span></a></td>
         <td class="num">${it.isDir ? '—' : fmtSize(it.size)}</td>
@@ -416,7 +380,12 @@ async function loadFiles() {
   renderCrumbs(p);
   selected.clear();
   try {
+    if (!isAdmin() && p !== '/' && !Object.keys(spaceFlags).length) {
+      const root = await api('GET', '/api/fs/list?path=%2F');
+      for (const it of root.items) spaceFlags[it.name] = !!it.readOnly;
+    }
     const { items } = await api('GET', `/api/fs/list?path=${encodeURIComponent(p)}`);
+    if (p === '/' && !isAdmin()) for (const it of items) spaceFlags[it.name] = !!it.readOnly;
     if (p !== currentPath()) return; // 加载期间又切换了目录
     currentItems = items;
     renderFiles(true);
@@ -477,7 +446,7 @@ $('#sel-delete').addEventListener('click', async () => {
   const names = [...selected];
   const ok = await ask({
     title: `删除 ${names.length} 项？`,
-    message: names.length <= 3 ? names.join('、') : `${names.slice(0, 3).join('、')} 等 ${names.length} 项`,
+    message: `${names.length <= 3 ? names.join('、') : `${names.slice(0, 3).join('、')} 等 ${names.length} 项`}会移到回收站，30 天内可以还原。`,
     confirm: true,
     okText: '删除',
     danger: true,
@@ -485,7 +454,7 @@ $('#sel-delete').addEventListener('click', async () => {
   if (!ok) return;
   try {
     await api('POST', '/api/fs/delete', { paths: names.map((n) => join(currentPath(), n)) });
-    toast(`已删除 ${names.length} 项`);
+    toast(`已移到回收站：${names.length} 项`);
   } catch (err) {
     toast(err.message, 'error');
   }
@@ -511,6 +480,7 @@ $('#file-rows').addEventListener('click', async (e) => {
   if (!btn) return;
   const tr = btn.closest('tr');
   const { path, name } = tr.dataset;
+  if (btn.dataset.act === 'share') return openShareDialog(path, name, tr.dataset.dir === '1');
   if (btn.dataset.act === 'rename') {
     const next = await ask({
       title: '重命名',
@@ -523,12 +493,12 @@ $('#file-rows').addEventListener('click', async (e) => {
       loadFiles();
     }
   } else {
-    const ok = await ask({ title: `删除“${name}”？`, message: '删除后无法在网页上恢复。', confirm: true, okText: '删除', danger: true });
+    const ok = await ask({ title: `删除“${name}”？`, message: '会移到回收站，30 天内可以还原。', confirm: true, okText: '删除', danger: true });
     if (!ok) return;
     try {
       await api('POST', '/api/fs/delete', { paths: [path] });
       tr.animate?.([{ opacity: 1 }, { opacity: 0, transform: 'translateX(24px)' }], { duration: reduceMotion() ? 1 : 260, easing: 'ease-in' }).finished.then(loadFiles, loadFiles);
-      toast('已删除');
+      toast('已移到回收站');
     } catch (err) {
       toast(err.message, 'error');
     }
@@ -881,7 +851,7 @@ async function loadStorages() {
 $('#storage-rows').addEventListener('click', async (e) => {
   const copy = e.target.closest('[data-copy]');
   if (copy) {
-    await navigator.clipboard?.writeText(copy.dataset.copy).catch(() => {});
+    await copyText(copy.dataset.copy);
     return toast('已复制挂载路径');
   }
   const btn = e.target.closest('button[data-act]');
@@ -1025,12 +995,343 @@ $('#account-form').addEventListener('submit', async (e) => {
 });
 
 // ==========================================================================
+// 通用：分段控件、复制、角色和只读空间
+// ==========================================================================
+
+let currentRole = 'user';
+let spaceFlags = {}; // 普通用户：空间名 -> 是否只读
+const isAdmin = () => currentRole === 'admin';
+const isReadOnly = (p) => !isAdmin() && !!spaceFlags[p.split('/').filter(Boolean)[0]];
+
+/** 分段控件：让白色滑块移到选中的那一项 */
+function syncSegmented(el) {
+  const sel = el.querySelector('[aria-selected="true"]');
+  const thumb = el.querySelector('.seg-thumb');
+  if (!sel || !thumb || !sel.offsetWidth) return;
+  thumb.style.width = `${sel.offsetWidth}px`;
+  thumb.style.transform = `translateX(${sel.offsetLeft - 3}px)`;
+}
+function selectSegment(el, pick) {
+  el.querySelectorAll('[role="tab"]').forEach((b) => b.setAttribute('aria-selected', String(pick(b))));
+  syncSegmented(el);
+}
+addEventListener('resize', () => $$('.segmented').forEach(syncSegmented));
+
+/** 复制文本：非 HTTPS 页面里 navigator.clipboard 不可用，退回到选中文本 + execCommand */
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    const t = document.createElement('textarea');
+    t.value = text;
+    t.style.cssText = 'position:fixed;opacity:0';
+    document.body.append(t);
+    t.select();
+    document.execCommand('copy');
+    t.remove();
+  }
+}
+
+const fmtDate = (ms) => (ms ? fmtTime(new Date(ms).toISOString()) : '—');
+const stagger = (i) => (reduceMotion() ? '' : ` style="animation-delay:${Math.min(i, 20) * 20}ms"`);
+
+// ==========================================================================
+// 回收站
+// ==========================================================================
+
+async function loadTrash() {
+  let items = [];
+  try {
+    items = await api('GET', '/api/trash');
+  } catch (err) {
+    return toast(err.message, 'error');
+  }
+  $('#trash-empty').hidden = items.length > 0;
+  $('#btn-empty-trash').disabled = !items.length;
+  $('#trash-rows').innerHTML = items
+    .map(
+      (t, i) => `<tr data-id="${t.id}" data-name="${esc(t.name)}" class="row-in"${stagger(i)}>
+        <td><span class="name">${fileIcon(t)}<span>${esc(t.name)}</span></span></td>
+        <td><a class="from" href="#${encodeURIComponent(t.from)}" data-goto>${esc(t.from === '/' ? '全部文件' : t.from)}</a></td>
+        <td class="muted">${fmtDate(t.deletedAt)}</td>
+        <td><span class="days-left ${t.daysLeft <= 3 ? 'soon' : ''}">${t.daysLeft} 天</span></td>
+        <td><span class="row-actions"><button class="act" data-act="restore">${use('i-restore')}<span>还原</span></button><button class="act danger" data-act="purge">${use('i-trash')}<span>彻底删除</span></button></span></td>
+      </tr>`,
+    )
+    .join('');
+}
+
+$('#trash-rows').addEventListener('click', async (e) => {
+  if (e.target.closest('[data-goto]')) return; // 点原位置直接跳转（hashchange 会切到文件页）
+  const btn = e.target.closest('button[data-act]');
+  if (!btn) return;
+  const tr = btn.closest('tr');
+  const { id, name } = tr.dataset;
+  try {
+    if (btn.dataset.act === 'restore') {
+      const r = await api('POST', `/api/trash/${id}/restore`);
+      toast(r.name === name ? `已还原到 ${r.to}` : `原位置有同名文件，已还原为“${r.name}”`);
+    } else {
+      const ok = await ask({ title: `彻底删除“${name}”？`, message: '彻底删除后无法恢复。', confirm: true, okText: '彻底删除', danger: true });
+      if (!ok) return;
+      await api('DELETE', `/api/trash/${id}`);
+      toast('已彻底删除');
+    }
+  } catch (err) {
+    toast(err.message, 'error');
+  }
+  loadTrash();
+});
+
+$('#btn-empty-trash').addEventListener('click', async () => {
+  const ok = await ask({ title: '清空回收站？', message: '回收站里的所有文件都会被彻底删除，无法恢复。', confirm: true, okText: '清空', danger: true });
+  if (!ok) return;
+  try {
+    const r = await api('DELETE', '/api/trash');
+    toast(`已彻底删除 ${r.removed} 项`);
+  } catch (err) {
+    toast(err.message, 'error');
+  }
+  loadTrash();
+});
+
+// ==========================================================================
+// 分享管理
+// ==========================================================================
+
+let shareList = [];
+const absUrl = (u) => new URL(u, location.origin).href;
+
+function expiryText(s) {
+  if (s.expired) return '<span class="pill expired">已过期</span>';
+  if (!s.expiresAt) return '永久有效';
+  const days = Math.ceil((s.expiresAt - Date.now()) / 86400_000);
+  return `<span title="${fmtDate(s.expiresAt)}">${days <= 1 ? '1 天内' : `${days} 天后`}过期</span>`;
+}
+
+async function loadShares() {
+  try {
+    shareList = await api('GET', '/api/shares');
+  } catch (err) {
+    return toast(err.message, 'error');
+  }
+  $('#share-empty').hidden = shareList.length > 0;
+  $('#share-rows').innerHTML = shareList
+    .map(
+      (s, i) => `<tr data-id="${s.id}" class="row-in"${stagger(i)}>
+        <td><span class="name">${fileIcon(s)}<span title="${esc(s.from)}">${esc(s.name)}</span></span></td>
+        <td><span class="pill ${s.type}">${s.type === 'direct' ? '直链' : '分享链接'}</span></td>
+        <td>${s.code ? `<span class="code">${esc(s.code)}</span>` : '<span class="muted">无</span>'}</td>
+        <td class="muted">${expiryText(s)}</td>
+        <td class="num">${s.views} / ${s.downloads}</td>
+        <td><span class="row-actions"><button class="act" data-act="copy" ${s.expired ? 'disabled' : ''}>${use('i-copy')}<span>复制</span></button><a class="act" href="${s.url}" target="_blank" rel="noopener">${use('i-external')}<span>打开</span></a><button class="act danger" data-act="cancel">${use('i-close')}<span>取消</span></button></span></td>
+      </tr>`,
+    )
+    .join('');
+}
+
+$('#share-rows').addEventListener('click', async (e) => {
+  const btn = e.target.closest('button[data-act]');
+  if (!btn) return;
+  const s = shareList.find((x) => x.id === btn.closest('tr').dataset.id);
+  if (btn.dataset.act === 'copy') {
+    await copyText(s.code ? `${absUrl(s.url)}  提取码：${s.code}` : absUrl(s.url));
+    return toast(s.code ? '已复制链接和提取码' : '已复制链接');
+  }
+  const ok = await ask({ title: `取消分享“${s.name}”？`, message: '取消后这个链接就打不开了。', confirm: true, okText: '取消分享', danger: true });
+  if (!ok) return;
+  await api('DELETE', `/api/shares/${s.id}`).then(() => toast('已取消分享'), (err) => toast(err.message, 'error'));
+  loadShares();
+});
+
+// ---------- 创建分享对话框 ----------
+
+const shareState = { path: '', isDir: false, type: 'share', created: null };
+const randomCode = () => Array.from(crypto.getRandomValues(new Uint8Array(4)), (b) => 'abcdefghjkmnpqrstuvwxyz23456789'[b % 31]).join('');
+
+function setShareType(type) {
+  const f = $('#share-form');
+  shareState.type = type;
+  selectSegment($('#share-type'), (b) => b.dataset.type === type);
+  const direct = type === 'direct';
+  $('#share-desc').textContent = direct
+    ? '直链打开就是文件本身，可以直接下载，也能用在图片、视频外链或下载工具里。直链不能设置提取码。'
+    : '打开链接会看到分享页，可以在线预览和下载' + (shareState.isDir ? '，能浏览文件夹里的所有文件。' : '。');
+  $('.share-code-row').hidden = direct;
+  $('.share-code-input').hidden = direct || !f.useCode.checked;
+}
+
+function openShareDialog(path, name, isDir) {
+  const f = $('#share-form');
+  Object.assign(shareState, { path, isDir, created: null });
+  f.reset();
+  f.code.value = randomCode();
+  $('#share-name').textContent = `分享“${name}”`;
+  $('#share-result').hidden = true;
+  $('#share-error').textContent = '';
+  $('#share-submit').textContent = '创建链接';
+  // 直链只能用于单个文件
+  const directBtn = $('#share-type [data-type="direct"]');
+  directBtn.disabled = isDir;
+  directBtn.title = isDir ? '直链只能用于单个文件' : '';
+  $('#share-dialog').showModal();
+  setShareType('share');
+  requestAnimationFrame(() => syncSegmented($('#share-type')));
+}
+
+$('#share-type').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-type]');
+  if (b && !b.disabled && !shareState.created) setShareType(b.dataset.type);
+});
+$('#share-form').useCode.addEventListener('change', () => setShareType(shareState.type));
+
+$('#share-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (shareState.created) return closeDialog($('#share-dialog')); // 创建后按钮变成“完成”
+  const f = e.target;
+  const useCode = shareState.type === 'share' && f.useCode.checked;
+  const code = useCode ? f.code.value.trim() : '';
+  if (useCode && !/^[A-Za-z0-9]{4,8}$/.test(code)) return ($('#share-error').textContent = '提取码为 4～8 位字母或数字');
+  const btn = $('#share-submit');
+  btn.disabled = true;
+  try {
+    const s = await api('POST', '/api/shares', { path: shareState.path, type: shareState.type, code, days: Number(f.days.value) });
+    shareState.created = s;
+    $('#share-url').value = absUrl(s.url);
+    $('#share-result-code').innerHTML = s.code ? `提取码：<b>${esc(s.code)}</b>` : s.type === 'direct' ? '任何拿到链接的人都能直接下载' : '没有提取码，拿到链接的人都能打开';
+    $('#share-result').hidden = false;
+    $('#share-error').textContent = '';
+    btn.textContent = '完成';
+    await copyText(s.code ? `${absUrl(s.url)}  提取码：${s.code}` : absUrl(s.url));
+    toast('链接已创建并复制');
+  } catch (err) {
+    $('#share-error').textContent = err.message;
+  } finally {
+    btn.disabled = false;
+  }
+});
+$('#share-copy').addEventListener('click', async () => {
+  const s = shareState.created;
+  await copyText(s.code ? `${absUrl(s.url)}  提取码：${s.code}` : absUrl(s.url));
+  toast('已复制');
+});
+
+// ==========================================================================
+// 系统设置（管理员）：注册、用户空间、用户管理
+// ==========================================================================
+
+let userList = [];
+
+async function loadSettings() {
+  let st, list;
+  try {
+    [st, list, userList] = await Promise.all([api('GET', '/api/settings'), api('GET', '/api/storages'), api('GET', '/api/users')]);
+  } catch (err) {
+    return toast(err.message, 'error');
+  }
+  const f = $('#settings-form');
+  const options = (sel) =>
+    `<option value="">不启用</option>` +
+    list.map((s) => `<option value="${s.id}" ${s.id === sel ? 'selected' : ''}>${esc(s.mountPath)}（${esc(STORAGE_SHORT[s.type] || s.type)}）</option>`).join('');
+  f.regOpen.checked = st.registration.open;
+  f.inviteCode.value = st.registration.inviteCode || '';
+  f.privateStorage.innerHTML = options(st.privateSpace.storageId);
+  f.privateDir.value = st.privateSpace.dir;
+  f.publicStorage.innerHTML = options(st.publicSpace.storageId);
+  f.publicDir.value = st.publicSpace.dir;
+  f.publicWritable.checked = st.publicSpace.writable;
+  $('#settings-error').textContent = '';
+  renderUsers();
+}
+
+function renderUsers() {
+  $('#user-rows').innerHTML = userList
+    .map((u, i) => {
+      const me = u.username === currentUser;
+      const acts = me
+        ? '<span class="muted">当前账号</span>'
+        : `<button class="act" data-act="role">${u.role === 'admin' ? '取消管理员' : '设为管理员'}</button>
+           <button class="act" data-act="password">${use('i-lock')}<span>重置密码</span></button>
+           <button class="act" data-act="toggle">${u.disabled ? '启用' : '停用'}</button>
+           <button class="act danger" data-act="delete" aria-label="删除用户 ${esc(u.username)}">${use('i-trash')}</button>`;
+      return `<tr data-id="${u.id}" class="row-in"${stagger(i)}>
+        <td><span class="name"><span class="avatar" style="width:32px;height:32px">${use('i-user')}</span><span>${esc(u.username)}${me ? '（你）' : ''}</span></span></td>
+        <td><span class="pill ${u.role}">${u.role === 'admin' ? '管理员' : '普通用户'}</span></td>
+        <td class="muted">${fmtDate(u.createdAt)}</td>
+        <td>${u.disabled ? '<span class="status off">已停用</span>' : '<span class="status ok">正常</span>'}</td>
+        <td><span class="row-actions">${acts}</span></td>
+      </tr>`;
+    })
+    .join('');
+}
+
+$('#settings-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const f = e.target;
+  try {
+    await api('PUT', '/api/settings', {
+      registration: { open: f.regOpen.checked, inviteCode: f.inviteCode.value.trim() },
+      privateSpace: { storageId: f.privateStorage.value, dir: f.privateDir.value.trim() || '/users' },
+      publicSpace: { storageId: f.publicStorage.value, dir: f.publicDir.value.trim() || '/', writable: f.publicWritable.checked },
+    });
+    $('#settings-error').textContent = '';
+    toast('设置已保存');
+  } catch (err) {
+    $('#settings-error').textContent = err.message;
+  }
+});
+
+$('#user-rows').addEventListener('click', async (e) => {
+  const btn = e.target.closest('button[data-act]');
+  if (!btn) return;
+  const u = userList.find((x) => x.id === btn.closest('tr').dataset.id);
+  const act = btn.dataset.act;
+  try {
+    if (act === 'password') {
+      const pw = await ask({
+        title: `重置“${u.username}”的密码`,
+        message: '设置一个新密码（至少 8 位），告诉对方后让他自己在账号设置里修改。',
+        value: '',
+        placeholder: '新密码',
+        okText: '重置',
+        validate: async (v) => (v.length < 8 ? '新密码至少 8 位' : (await api('PUT', `/api/users/${u.id}`, { password: v }), null)),
+      });
+      if (pw) toast('已重置密码，对方需要重新登录');
+    } else if (act === 'role') {
+      await api('PUT', `/api/users/${u.id}`, { role: u.role === 'admin' ? 'user' : 'admin' });
+      toast(u.role === 'admin' ? `${u.username} 已改为普通用户` : `${u.username} 已设为管理员`);
+    } else if (act === 'toggle') {
+      await api('PUT', `/api/users/${u.id}`, { disabled: !u.disabled });
+      toast(u.disabled ? `已启用 ${u.username}` : `已停用 ${u.username}，他会被立即退出登录`);
+    } else {
+      const ok = await ask({
+        title: `删除用户“${u.username}”？`,
+        message: '他的分享链接会失效，回收站会被清空。私人空间里的文件会保留，管理员仍可以在存储里看到。',
+        confirm: true,
+        okText: '删除用户',
+        danger: true,
+      });
+      if (!ok) return;
+      await api('DELETE', `/api/users/${u.id}`);
+      toast(`已删除用户 ${u.username}`);
+    }
+  } catch (err) {
+    toast(err.message, 'error');
+  }
+  userList = await api('GET', '/api/users');
+  renderUsers();
+});
+
+// ==========================================================================
 // 启动
 // ==========================================================================
 
 async function start() {
-  const { user } = await api('GET', '/api/me');
+  const { user, role } = await api('GET', '/api/me');
   if (!user) return showLogin();
+  currentRole = role;
+  document.body.classList.toggle('is-user', role !== 'admin');
+  spaceFlags = {};
   setUser(user);
   $('#login').hidden = true;
   $('#app').hidden = false;

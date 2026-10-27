@@ -30,6 +30,10 @@ export class WebDAVDriver {
     await this.client.createDirectory(this.p(path.posix.join(dir, name)));
   }
 
+  async move(p, toDir) {
+    await this.client.moveFile(this.p(p), this.p(path.posix.join(toDir, path.posix.basename(p))), { overwrite: false });
+  }
+
   async rename(p, newName) {
     const from = this.p(p);
     await this.client.moveFile(from, path.posix.join(path.posix.dirname(from), newName), { overwrite: false });
