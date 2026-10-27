@@ -286,44 +286,106 @@ document.addEventListener('keydown', (e) => {
 
 // ---------- 上传 ----------
 
-function uploadOne(file, dir) {
+// 分块上传：每块一个请求（默认 20MB，远小于 Cloudflare 免费版 100MB 的上限），失败自动重试；
+// 同一个文件再次上传会跳过服务器已收到的块（断点续传）。所有块传完后服务器在后台写入存储，这里轮询进度。
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+function putChunk(url, blob, onProgress, signal) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', url);
+    xhr.setRequestHeader('Content-Type', 'application/octet-stream');
+    xhr.upload.onprogress = (e) => onProgress(e.loaded);
+    xhr.onload = () => {
+      if (xhr.status === 200) return resolve();
+      let msg = `失败 (${xhr.status})`;
+      try {
+        msg = JSON.parse(xhr.responseText).error || msg;
+      } catch {}
+      reject(Object.assign(new Error(msg), { status: xhr.status }));
+    };
+    xhr.onerror = () => reject(Object.assign(new Error('网络错误'), { status: 0 }));
+    xhr.onabort = () => reject(Object.assign(new Error('已取消'), { aborted: true }));
+    signal.addEventListener('abort', () => xhr.abort(), { once: true });
+    xhr.send(blob);
+  });
+}
+
+async function uploadOne(file, dir) {
   const el = document.createElement('div');
   el.className = 'upload';
-  el.innerHTML = `<div>${esc(file.name)} <span class="pct">0%</span></div><div class="bar"><i></i></div>`;
+  el.innerHTML = `<div class="upload-head"><span class="upload-name">${esc(file.name)}</span> <span class="pct">准备中…</span><button class="ghost upload-cancel" title="取消">✕</button></div><div class="bar"><i></i></div>`;
   $('#uploads').append(el);
-  return new Promise((resolve) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', `/api/fs/upload?path=${encodeURIComponent(dir)}&size=${file.size}`);
-    xhr.upload.onprogress = (e) => {
-      if (!e.lengthComputable) return;
-      // 浏览器传完后服务端可能还在转存到远端（如 123云盘），所以封顶 99%
-      const pct = Math.min(99, Math.round((e.loaded / e.total) * 100));
-      el.querySelector('.pct').textContent = pct === 99 ? '处理中…' : `${pct}%`;
-      el.querySelector('i').style.width = pct + '%';
-    };
-    xhr.onload = () => {
-      if (xhr.status === 200) {
-        el.remove();
-      } else {
-        let msg = `失败 (${xhr.status})`;
-        try {
-          msg = JSON.parse(xhr.responseText).error || msg;
-        } catch {}
-        el.classList.add('failed');
-        el.querySelector('.pct').textContent = msg;
-        setTimeout(() => el.remove(), 8000);
-      }
-      resolve();
-    };
-    xhr.onerror = () => {
-      el.classList.add('failed');
-      el.querySelector('.pct').textContent = '网络错误';
-      resolve();
-    };
-    const form = new FormData();
-    form.append('file', file, file.name);
-    xhr.send(form);
+  const pctEl = el.querySelector('.pct');
+  const barEl = el.querySelector('i');
+  const ac = new AbortController();
+  let uploadId = null;
+  el.querySelector('.upload-cancel').addEventListener('click', () => {
+    ac.abort();
+    if (uploadId) api('DELETE', `/api/uploads/${uploadId}`).catch(() => {});
   });
+  const show = (text, ratio) => {
+    pctEl.textContent = text;
+    if (ratio !== undefined) barEl.style.width = `${Math.round(ratio * 100)}%`;
+  };
+
+  try {
+    const s = await api('POST', '/api/uploads', { path: dir, name: file.name, size: file.size, lastModified: file.lastModified });
+    uploadId = s.id;
+    if (s.status !== 'processing') {
+      const done = new Set(s.received);
+      const sizeOf = (i) => Math.min(s.chunkSize, file.size - i * s.chunkSize);
+      let doneBytes = [...done].reduce((a, i) => a + sizeOf(i), 0);
+      const inflight = new Map(); // 正在传的块 -> 已发送字节
+      const report = () => {
+        const sent = doneBytes + [...inflight.values()].reduce((a, b) => a + b, 0);
+        const ratio = file.size ? sent / file.size : 1;
+        show(`${Math.min(99, Math.floor(ratio * 100))}%`, ratio);
+      };
+      if (done.size) report(); // 续传：直接显示已完成的进度
+      const queue = [];
+      for (let i = 0; i < s.chunks; i++) if (!done.has(i)) queue.push(i);
+      const worker = async () => {
+        while (queue.length) {
+          const i = queue.shift();
+          const blob = file.slice(i * s.chunkSize, i * s.chunkSize + sizeOf(i));
+          for (let attempt = 1; ; attempt++) {
+            try {
+              inflight.set(i, 0);
+              await putChunk(`/api/uploads/${s.id}/${i}`, blob, (n) => (inflight.set(i, n), report()), ac.signal);
+              inflight.delete(i);
+              doneBytes += blob.size;
+              report();
+              break;
+            } catch (e) {
+              inflight.delete(i);
+              const retryable = !e.aborted && (e.status === 0 || e.status === 408 || e.status === 429 || e.status >= 500);
+              if (!retryable || attempt >= 5) throw e;
+              show(`第 ${i + 1} 块失败，${attempt * 2} 秒后重试…`);
+              await sleep(attempt * 2000);
+            }
+          }
+        }
+      };
+      await Promise.all([worker(), worker(), worker()]);
+      await api('POST', `/api/uploads/${s.id}/complete`);
+    }
+    // 服务器把文件写入存储（S3、123云盘等可能需要较长时间），轮询结果
+    show('服务器处理中…', 1);
+    for (;;) {
+      if (ac.signal.aborted) throw Object.assign(new Error('已取消'), { aborted: true });
+      const st = await api('GET', `/api/uploads/${s.id}`);
+      if (st.status === 'done') break;
+      if (st.status === 'error') throw new Error(st.error || '写入存储失败');
+      await sleep(1000);
+    }
+    el.remove();
+  } catch (e) {
+    el.classList.add('failed');
+    el.querySelector('.upload-cancel').remove();
+    show(e.aborted ? '已取消' : `${e.message}（再次上传同一文件可从断点继续）`);
+    setTimeout(() => el.remove(), e.aborted ? 2000 : 10000);
+  }
 }
 
 async function uploadFiles(files) {

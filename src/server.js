@@ -7,6 +7,7 @@ import * as vfs from './vfs.js';
 import { HttpError } from './vfs.js';
 import { DRIVER_TYPES } from './drivers/index.js';
 import * as media from './media.js';
+import * as uploads from './upload.js';
 
 const PORT = Number(process.env.PORT || 8080);
 const app = express();
@@ -125,6 +126,20 @@ api.delete('/hls/:id', (req, res) => {
   res.json({ ok: true });
 });
 
+// ---------- 分块上传（网页使用；单块远小于 Cloudflare 免费版 100MB 上限） ----------
+// POST /api/uploads {path, name, size, lastModified} -> {id, chunkSize, chunks, received[]}
+// PUT  /api/uploads/:id/:index  请求体为该块的原始二进制
+// POST /api/uploads/:id/complete  后台写入存储，立即返回；GET /api/uploads/:id 查询状态
+api.post('/uploads', async (req, res) => res.json(await uploads.init(req.body || {})));
+api.put('/uploads/:id/:index', async (req, res) => res.json(await uploads.putChunk(req.params.id, req.params.index, req)));
+api.post('/uploads/:id/complete', (req, res) => res.json(uploads.complete(req.params.id)));
+api.get('/uploads/:id', (req, res) => res.json(uploads.status(req.params.id)));
+api.delete('/uploads/:id', async (req, res) => {
+  await uploads.cancel(req.params.id);
+  res.json({ ok: true });
+});
+
+// 旧接口：整个文件一个请求（文件超过 100MB 时过不了 Cloudflare 免费版，网页已改用分块上传）
 // 每个请求上传一个文件：POST /api/fs/upload?path=<目录>&size=<字节数>，multipart 字段名 file
 api.post('/fs/upload', (req, res, next) => {
   const { driver, inner } = vfs.mustResolve(req.query.path);

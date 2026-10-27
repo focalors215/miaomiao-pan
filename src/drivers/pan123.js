@@ -146,18 +146,22 @@ export class Pan123Driver {
   }
 
   // V2 分片上传：创建文件(可能秒传) -> 按 sliceSize 上传分片 -> 轮询上传完毕
-  async upload(dir, name, stream) {
+  // opts.file：调用方已经把完整文件放在本地（分块上传拼好的临时文件），直接用它，不再复制一份
+  async upload(dir, name, stream, _size, opts = {}) {
     const parent = await this.lookup(dir);
-    // 创建文件需要整文件 MD5，所以先落盘到临时文件
-    const tmp = path.join(os.tmpdir(), `pan123-${crypto.randomUUID()}`);
+    // 创建文件需要整文件 MD5，所以文件必须先完整落在本地磁盘
+    const ownTmp = !opts.file;
+    const tmp = opts.file || path.join(os.tmpdir(), `pan123-${crypto.randomUUID()}`);
     const md5 = crypto.createHash('md5');
     let size = 0;
-    stream.on('data', (b) => {
+    const source = ownTmp ? stream : (stream.destroy(), fs.createReadStream(tmp));
+    source.on('data', (b) => {
       md5.update(b);
       size += b.length;
     });
     try {
-      await pipeline(stream, fs.createWriteStream(tmp));
+      if (ownTmp) await pipeline(source, fs.createWriteStream(tmp));
+      else await new Promise((resolve, reject) => source.on('end', resolve).on('error', reject));
       const etag = md5.digest('hex');
       const created = await this.api('POST', '/upload/v2/file/create', {
         body: { parentFileID: parent.fileId, filename: name, etag, size, duplicate: 2 },
@@ -192,7 +196,7 @@ export class Pan123Driver {
       }
       this.invalidate(parent.fileId);
     } finally {
-      await fsp.rm(tmp, { force: true });
+      if (ownTmp) await fsp.rm(tmp, { force: true });
     }
   }
 

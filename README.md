@@ -8,6 +8,8 @@
 - **文件管理**：
   - 浏览、新建文件夹、重命名、删除。
   - 拖拽或多选上传，最多同时传 3 个，带进度条。
+  - 上传自动分块：每块默认 20MB，单个请求不会超过 Cloudflare 免费版的 100MB 限制。
+  - 失败自动重试，中断后再传同一文件会从断点继续。
 - **在线预览**：
   - 图片：缩放、旋转。
   - PDF：pdf.js 渲染。
@@ -54,6 +56,7 @@ docker compose up -d --build
 
 | 变量 | 默认值 | 说明 |
 | --- | --- | --- |
+| `UPLOAD_CHUNK_MB` | `20` | 分块上传每块的大小（MB），范围 1～95 |
 | `TRUST_PROXY` | `false` | 放在 Nginx/Caddy 等 HTTPS 反向代理后面时设为 `true`，登录 Cookie 会带上 `Secure` |
 | `DATA_DIR` | `/data` | 配置文件目录 |
 | `FFMPEG_PATH` / `FFPROBE_PATH` | `ffmpeg` / `ffprobe` | ffmpeg 可执行文件位置（镜像里已经装好） |
@@ -73,6 +76,24 @@ docker compose up -d
 ```
 
 能登录后，把 `ADMIN_RESET` 改回 `false` 再重启一次，否则以后每次重启都会重置。
+
+### 放在 Cloudflare 后面
+
+Cloudflare 免费版有两个限制：
+
+| 限制 | 说明 | 网盘的处理方式 |
+| --- | --- | --- |
+| 请求体大小 | 单个请求最大 100MB | 网页上传时自动分块，每块默认 20MB，多大的文件都能传 |
+| 响应时间 | 100 秒内必须返回，否则报 524 | 所有块传完后，服务器在后台把文件写入存储（S3、123云盘等可能要几分钟）；网页轮询处理进度，不会超时 |
+
+使用说明：
+- **分块大小：** 用环境变量 `UPLOAD_CHUNK_MB` 调整，最大 95MB。网络不稳定时调小一些，失败重传的代价更低。
+- **断点续传：**
+  - 上传中途刷新页面或断网，重新上传同一个文件（同名、同大小、同修改时间）会跳过已传完的块。
+  - 没传完的上传 24 小时后自动清理。
+- **服务器磁盘空间：**
+  - 上传过程中的块保存在 `./data/uploads/`，写入存储后删除。
+  - 服务器需要留出与上传文件大小相当的空闲空间。
 
 ### 数据和备份
 
@@ -198,7 +219,8 @@ bash test/e2e.sh http://127.0.0.1:8080 管理员密码 /123     # 额外测试�
 
 测试脚本覆盖了这些内容：
 - **登录和账号：** 鉴权、修改用户名和密码（测完会改回原来的）。
-- **文件操作：** 上传 20MB 文件并校验 MD5、Range 下载、重命名、删除。
+- **文件操作：** 分块上传 20MB 文件并校验 MD5、Range 下载、重命名、删除。
+- **分块上传：** 断点续传、块大小和序号校验（测试环境把分块设成 5MB，20MB 文件会分成 4 块）。
 - **安全：** 路径穿越防护。
 - **下载方式：** 302 和代理之间的切换。
 
@@ -238,7 +260,12 @@ bash test/e2e.sh http://127.0.0.1:8080 管理员密码 /123     # 额外测试�
 | GET | `/api/fs/probe?path=` | 识别音视频编码，返回浏览器原生播放用的 MIME（`null` 表示需要转码） |
 | GET | `/api/fs/image?path=` | 图片转 JPEG |
 | POST | `/api/fs/transcode` | `{path}`，创建转码会话，返回 HLS 播放列表地址 |
-| POST | `/api/fs/upload?path=&size=` | multipart 上传，字段名 `file`，每次一个文件 |
+| POST | `/api/uploads` | 分块上传第 1 步：`{path, name, size, lastModified}`，返回 `{id, chunkSize, chunks, received}`（`received` 是已收到的块，用于续传） |
+| PUT | `/api/uploads/:id/:index` | 分块上传第 2 步：请求体是第 `index` 块（从 0 开始）的原始二进制 |
+| POST | `/api/uploads/:id/complete` | 分块上传第 3 步：所有块到齐后开始写入存储，立即返回 |
+| GET | `/api/uploads/:id` | 查询状态：`uploading` / `processing` / `done` / `error` |
+| DELETE | `/api/uploads/:id` | 取消上传 |
+| POST | `/api/fs/upload?path=&size=` | 旧接口：整个文件一个 multipart 请求（字段名 `file`），超过 100MB 过不了 Cloudflare 免费版 |
 | POST | `/api/fs/mkdir` | `{path, name}` |
 | POST | `/api/fs/rename` | `{path, name}` |
 | POST | `/api/fs/delete` | `{paths: []}` |

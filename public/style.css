@@ -119,6 +119,9 @@ td.muted { color: var(--muted); }
 
 .uploads { display: grid; gap: 6px; margin-bottom: 12px; }
 .upload { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; font-size: 13px; }
+.upload-head { display: flex; align-items: center; gap: 8px; }
+.upload-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.upload-cancel { padding: 0 6px; font-size: 12px; line-height: 20px; }
 .upload .bar { height: 4px; background: var(--hover); border-radius: 2px; margin-top: 6px; overflow: hidden; }
 .upload .bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
 .upload.failed { color: var(--danger); }

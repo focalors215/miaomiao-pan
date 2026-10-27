@@ -3,6 +3,8 @@
 # 启动后建测试桶：docker compose exec pan node test/create-bucket.js
 services:
   pan:
+    environment:
+      UPLOAD_CHUNK_MB: 5 # 调小分块，让 20MB 的测试文件分成 4 块，覆盖多块上传
     volumes:
       - ./test:/app/test:ro
   minio:

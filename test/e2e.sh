@@ -25,7 +25,31 @@ json() { node -e 'const a=process.argv.slice(1),o={};for(let i=0;i<a.length;i+=2
 code() { req -o /dev/null -w '%{http_code}' -X "$1" "$BASE$2" -d "$3"; }
 jq_() { node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);const r=('"$1"');if(r!==undefined)console.log(r)})'; }
 names() { req -G "$BASE/api/fs/list" --data-urlencode "path=$1" | jq_ 'j.items?j.items.map(i=>i.name).sort().join(","):"ERR "+j.error'; }
-upload() { curl -s -b "$JAR" -o /dev/null -w '%{http_code}' -F "file=@$2" "$BASE/api/fs/upload?path=$(node -p 'encodeURIComponent(process.argv[1])' "$1")&size=$(wc -c <"$2" | tr -d ' ')"; }
+# 分块上传（和网页一样）：创建任务 → 逐块 PUT → 完成 → 轮询到写入存储。成功输出 200，否则输出出错的状态码
+upload() {
+  local size name r id cs n i c st B
+  size=$(wc -c <"$2" | tr -d ' ')
+  name=$(basename "$2")
+  B=$(json path "$1" name "$name" size "$size" lastModified "$RANDOM$RANDOM")
+  r=$(req -X POST "$BASE/api/uploads" -d "$B")
+  id=$(echo "$r" | jq_ 'j.id'); cs=$(echo "$r" | jq_ 'j.chunkSize')
+  [ -n "$id" ] || { echo 500; return; }
+  n=$(( (size + cs - 1) / cs )); [ "$n" -eq 0 ] && n=1
+  for ((i = 0; i < n; i++)); do
+    c=$(dd if="$2" bs="$cs" skip="$i" count=1 2>/dev/null | curl -s -b "$JAR" -o /dev/null -w '%{http_code}' -X PUT \
+      -H 'Content-Type: application/octet-stream' --data-binary @- "$BASE/api/uploads/$id/$i")
+    [ "$c" = 200 ] || { echo "$c"; return; }
+  done
+  req -o /dev/null -X POST "$BASE/api/uploads/$id/complete"
+  for ((i = 0; i < 300; i++)); do
+    st=$(req "$BASE/api/uploads/$id" | jq_ 'j.status')
+    [ "$st" = done ] && { echo 200; return; }
+    [ "$st" = error ] && { echo 500; return; }
+    sleep 0.5
+  done
+  echo 504
+}
+legacy_upload() { curl -s -b "$JAR" -o /dev/null -w '%{http_code}' -F "file=@$2" "$BASE/api/fs/upload?path=$(node -p 'encodeURIComponent(process.argv[1])' "$1")&size=$(wc -c <"$2" | tr -d ' ')"; }
 download() { curl -s -b "$JAR" -L -o "$2" -w '%{http_code}' -G "$BASE/api/fs/download" --data-urlencode "path=$1" "${@:3}"; }
 md5of() { if command -v md5sum >/dev/null; then md5sum "$1" | cut -d' ' -f1; else md5 -q "$1"; fi; }
 
@@ -82,6 +106,29 @@ for M in /本地 /s3 /dav ${EXTRA[@]+"${EXTRA[@]}"}; do
   check "删除文件夹" "$(code POST /api/fs/delete "$B")" 200
   check "删除后不再列出" "$(names "$M" | tr ',' '\n' | grep -c 改名目录)" 0
 done
+
+echo "== 分块上传"
+SIZE=$(wc -c <"$WORK/big.bin" | tr -d ' ')
+B=$(json path /本地 name 续传.bin size "$SIZE" lastModified 12345)
+R=$(req -X POST "$BASE/api/uploads" -d "$B")
+ID=$(echo "$R" | jq_ 'j.id'); CS=$(echo "$R" | jq_ 'j.chunkSize'); NCH=$(echo "$R" | jq_ 'j.chunks')
+check "单块不超过 95MB（Cloudflare 免费版上限 100MB）" "$((CS <= 95 * 1024 * 1024))" 1
+check "20MB 文件分成多块" "$((NCH > 1))" 1
+chunk() { dd if="$WORK/big.bin" bs="$CS" skip="$1" count=1 2>/dev/null | curl -s -b "$JAR" -o /dev/null -w '%{http_code}' -X PUT -H 'Content-Type: application/octet-stream' --data-binary @- "$BASE/api/uploads/$ID/$1"; }
+check "上传第 1 块" "$(chunk 0)" 200
+check "块大小不对被拒绝" "$(head -c 100 /dev/zero | curl -s -b "$JAR" -o /dev/null -w '%{http_code}' -X PUT --data-binary @- "$BASE/api/uploads/$ID/1")" 400
+check "块序号越界被拒绝" "$(head -c 100 /dev/zero | curl -s -b "$JAR" -o /dev/null -w '%{http_code}' -X PUT --data-binary @- "$BASE/api/uploads/$ID/999")" 400
+check "缺块时不能完成" "$(req -o /dev/null -w '%{http_code}' -X POST "$BASE/api/uploads/$ID/complete")" 400
+check "同一文件再次创建任务：复用任务并记得已收到第 1 块" "$(req -X POST "$BASE/api/uploads" -d "$B" | jq_ 'j.id + " " + j.received.join(",")')" "$ID 0"
+for ((i = 1; i < NCH; i++)); do chunk $i >/dev/null; done
+check "续传剩余块后完成" "$(req -o /dev/null -w '%{http_code}' -X POST "$BASE/api/uploads/$ID/complete")" 200
+for ((i = 0; i < 60; i++)); do [ "$(req "$BASE/api/uploads/$ID" | jq_ 'j.status')" = done ] && break; sleep 0.5; done
+download "/本地/续传.bin" "$WORK/resumed.bin" >/dev/null
+check "续传后的文件 MD5 一致" "$(md5of "$WORK/resumed.bin")" "$BIG_MD5"
+check "未登录不能上传块" "$(head -c 10 /dev/zero | curl -s -o /dev/null -w '%{http_code}' -X PUT --data-binary @- "$BASE/api/uploads/$ID/0")" 401
+check "旧的整文件上传接口仍可用" "$(legacy_upload /本地 "$WORK/小文件.txt")" 200
+B=$(json paths '["/本地/续传.bin","/本地/小文件.txt"]')
+code POST /api/fs/delete "$B" >/dev/null
 
 echo "== 安全"
 check "路径穿越被拒绝" "$(req -o /dev/null -w '%{http_code}' -G "$BASE/api/fs/list" --data-urlencode 'path=/本地/../../etc')" 400
