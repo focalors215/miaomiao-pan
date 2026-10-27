@@ -181,11 +181,26 @@ api.delete('/storages/:id', (req, res) => {
 
 app.use('/api', api);
 
+// 文件系统错误换成可读的中文提示；原始错误里带有服务器上的绝对路径，不能返回给浏览器
+const FS_ERRORS = {
+  EEXIST: [409, '已经有同名的文件或文件夹'],
+  ENOENT: [404, '文件或文件夹不存在'],
+  ENOTDIR: [400, '目标不是文件夹'],
+  EISDIR: [400, '这是一个文件夹'],
+  ENOTEMPTY: [409, '文件夹不是空的'],
+  EACCES: [403, '服务器没有权限访问这个位置'],
+  EPERM: [403, '服务器没有权限执行这个操作'],
+  ENOSPC: [507, '服务器磁盘空间不足'],
+  EROFS: [403, '这个存储是只读的'],
+  ENAMETOOLONG: [400, '文件名太长'],
+};
+
 app.use((err, req, res, next) => {
-  const status = err.status || err.$metadata?.httpStatusCode || (err.code === 'ENOENT' ? 404 : 500);
+  const fsErr = typeof err.code === 'string' && FS_ERRORS[err.code];
+  const status = fsErr ? fsErr[0] : err.status || err.$metadata?.httpStatusCode || 500;
   if (status >= 500) console.error(err);
   if (res.headersSent) return res.destroy();
-  res.status(status >= 400 && status < 600 ? status : 500).json({ error: err.message || '服务器错误' });
+  res.status(status >= 400 && status < 600 ? status : 500).json({ error: fsErr ? fsErr[1] : err.message || '服务器错误' });
 });
 
 vfs.initDrivers();

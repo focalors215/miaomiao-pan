@@ -57,6 +57,8 @@ echo "== 登录"
 B=$(json username admin password wrong)
 check "错误密码被拒绝" "$(code POST /api/login "$B")" 401
 check "未登录访问被拒绝" "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/api/fs/list?path=/")" 401
+B=$(json username admin password "$PASS" remember false)
+check "不记住我：会话 Cookie 不带 Max-Age" "$(curl -s -o /dev/null -D - -H 'Content-Type: application/json' -X POST "$BASE/api/login" -d "$B" | grep -i '^set-cookie' | grep -ci 'max-age')" 0
 B=$(json username admin password "$PASS")
 check "正确密码登录" "$(code POST /api/login "$B")" 200
 
@@ -136,6 +138,12 @@ B=$(json path /本地 name a/b)
 check "文件名含 / 被拒绝" "$(code POST /api/fs/mkdir "$B")" 400
 B=$(json paths '["/s3"]')
 check "不能删除挂载点本身" "$(code POST /api/fs/delete "$B")" 400
+B=$(json path /本地 name 重名测试)
+code POST /api/fs/mkdir "$B" >/dev/null
+check "重名返回 409" "$(code POST /api/fs/mkdir "$B")" 409
+check "错误信息不暴露服务器路径" "$(req -X POST "$BASE/api/fs/mkdir" -d "$B" | grep -c '/data')" 0
+B=$(json paths '["/本地/重名测试"]')
+code POST /api/fs/delete "$B" >/dev/null
 B=$(json path /本地 name ..)
 check "文件名 .. 被拒绝" "$(code POST /api/fs/mkdir "$B")" 400
 

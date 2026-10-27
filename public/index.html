@@ -2,109 +2,307 @@
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>网盘</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#FFF6EA" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#14161B" media="(prefers-color-scheme: dark)">
+  <title>喵喵零和小鱼的仓库</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <!-- 图标和吉祥物：内联 SVG 符号，用 <use href="#..."> 引用 -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <!-- 喵喵零：灰白猫，大眼睛带星星高光 -->
+      <symbol id="cat" viewBox="0 0 120 112">
+        <path d="M18 44 L14 6 Q14 2 18 4 L46 22 Z" fill="#E4E6EC" stroke="#2B2E37" stroke-width="4" stroke-linejoin="round"/>
+        <path d="M102 44 L106 6 Q106 2 102 4 L74 22 Z" fill="#E4E6EC" stroke="#2B2E37" stroke-width="4" stroke-linejoin="round"/>
+        <path d="M22 34 L20 14 L38 25 Z" fill="#F7B7C3"/>
+        <path d="M98 34 L100 14 L82 25 Z" fill="#F7B7C3"/>
+        <ellipse cx="60" cy="62" rx="54" ry="46" fill="#E4E6EC" stroke="#2B2E37" stroke-width="4"/>
+        <path d="M24 82 Q60 112 96 82 Q90 60 60 62 Q30 60 24 82 Z" fill="#FFFFFF"/>
+        <circle cx="38" cy="60" r="17" fill="#F2C766"/>
+        <circle cx="82" cy="60" r="17" fill="#F2C766"/>
+        <circle cx="38" cy="60" r="14.5" fill="#15161B"/>
+        <circle cx="82" cy="60" r="14.5" fill="#15161B"/>
+        <circle cx="33" cy="54" r="5.5" fill="#fff"/>
+        <circle cx="77" cy="54" r="5.5" fill="#fff"/>
+        <path d="M44 63 l1.6 3.4 3.4 1.6 -3.4 1.6 -1.6 3.4 -1.6 -3.4 -3.4 -1.6 3.4 -1.6 z" fill="#fff"/>
+        <path d="M88 63 l1.6 3.4 3.4 1.6 -3.4 1.6 -1.6 3.4 -1.6 -3.4 -3.4 -1.6 3.4 -1.6 z" fill="#fff"/>
+        <ellipse cx="22" cy="80" rx="7" ry="4" fill="#F7B7C3" opacity=".8"/>
+        <ellipse cx="98" cy="80" rx="7" ry="4" fill="#F7B7C3" opacity=".8"/>
+        <path d="M56 74 h8 l-4 4.5 z" fill="#F08DA0" stroke="#2B2E37" stroke-width="1.5" stroke-linejoin="round"/>
+        <path d="M52 81 q4 4 8 0 q4 4 8 0" fill="none" stroke="#2B2E37" stroke-width="2.6" stroke-linecap="round"/>
+      </symbol>
+      <!-- 小鱼：蓝色小鲨鱼，白肚皮，张嘴笑 -->
+      <symbol id="fish" viewBox="0 0 132 92">
+        <path d="M100 46 L128 22 Q131 20 130 24 L122 46 L130 68 Q131 72 128 70 Z" fill="#4C8EF7" stroke="#22314F" stroke-width="3.5" stroke-linejoin="round"/>
+        <path d="M50 18 Q62 0 74 4 Q70 12 72 20 Z" fill="#4C8EF7" stroke="#22314F" stroke-width="3.5" stroke-linejoin="round"/>
+        <ellipse cx="60" cy="48" rx="50" ry="32" fill="#4C8EF7" stroke="#22314F" stroke-width="3.5"/>
+        <path d="M14 56 Q40 82 92 62 Q70 66 44 60 Q26 56 14 56 Z" fill="#FFFFFF"/>
+        <circle cx="34" cy="38" r="7" fill="#15161B"/>
+        <circle cx="31.5" cy="35.5" r="2.6" fill="#fff"/>
+        <path d="M16 50 Q28 64 44 52" fill="#E85A6F" stroke="#22314F" stroke-width="3" stroke-linejoin="round"/>
+        <path d="M22 52 l3 4 3 -4.5 M32 53.5 l3 4 3 -4.5" fill="#fff" stroke="none"/>
+        <ellipse cx="50" cy="52" rx="6" ry="3.5" fill="#F7A8B6" opacity=".85"/>
+        <path d="M70 58 Q80 74 92 66" fill="#3B7BE6" stroke="#22314F" stroke-width="3" stroke-linejoin="round"/>
+        <path d="M78 34 q4 4 8 0 M84 30 q4 4 8 0" fill="none" stroke="#2E6FD8" stroke-width="2.4" stroke-linecap="round" opacity=".7"/>
+      </symbol>
+      <!-- 纸箱 -->
+      <symbol id="box" viewBox="0 0 240 70">
+        <path d="M6 10 H234 L226 66 Q225 68 222 68 H18 Q15 68 14 66 Z" fill="#E6B57C" stroke="#9B6B3A" stroke-width="3" stroke-linejoin="round"/>
+        <path d="M4 4 H236 Q238 4 237 7 L234 14 H6 L3 7 Q2 4 4 4 Z" fill="#F0C690" stroke="#9B6B3A" stroke-width="3" stroke-linejoin="round"/>
+        <path d="M120 14 V68" stroke="#C99456" stroke-width="2.5" opacity=".6"/>
+        <rect x="96" y="28" width="48" height="18" rx="4" fill="#F6DDB5" opacity=".8"/>
+      </symbol>
+
+      <!-- 界面图标：线条风格，统一 24×24、2px 描边 -->
+      <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h3.6l2 2h7.4A2.5 2.5 0 0 1 21 9.5v8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/></symbol>
+      <symbol id="i-storage" viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="8" ry="3" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6" fill="none" stroke="currentColor" stroke-width="1.9"/></symbol>
+      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="m16 16 4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+      <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14v4.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3M19.5 4v4.5H15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-folder-plus" viewBox="0 0 24 24"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h3.6l2 2h7.4A2.5 2.5 0 0 1 21 9.5v8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/><path d="M12 10.5v6M9 13.5h6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></symbol>
+      <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M15.5 5.5 18.5 8.5M4 20l1-4.2L16 4.8a1.8 1.8 0 0 1 2.6 0l.6.6a1.8 1.8 0 0 1 0 2.6L8.2 19z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/></symbol>
+      <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4.5 7h15M9.5 7V5.2c0-.7.5-1.2 1.2-1.2h2.6c.7 0 1.2.5 1.2 1.2V7m3 0-.7 11.3a1.8 1.8 0 0 1-1.8 1.7H9a1.8 1.8 0 0 1-1.8-1.7L6.5 7m3.7 4v5m3.6-5v5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="4" fill="currentColor"/><path d="M4.5 20c.8-3.6 3.7-5.5 7.5-5.5s6.7 1.9 7.5 5.5" fill="currentColor"/></symbol>
+      <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5" fill="none" stroke="currentColor" stroke-width="1.9"/></symbol>
+      <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M12 2.8v2.4m0 13.6v2.4M2.8 12h2.4m13.6 0h2.4M5.5 5.5l1.7 1.7m9.6 9.6 1.7 1.7m0-13-1.7 1.7m-9.6 9.6-1.7 1.7" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></symbol>
+      <symbol id="i-logout" viewBox="0 0 24 24"><path d="M14 4.5H6.5A1.5 1.5 0 0 0 5 6v12a1.5 1.5 0 0 0 1.5 1.5H14M10 12h10m0 0-3.5-3.5M20 12l-3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 5.5 6.5 6.5L9 18.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9.5 6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5.5h-5V20H5a1 1 0 0 1-1-1z" fill="currentColor"/></symbol>
+      <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.9"/></symbol>
+      <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M4 4l16 16M10 6c.6-.1 1.3-.2 2-.2 6 0 9.5 6.4 9.5 6.4s-1 1.9-3 3.7M6.6 7.6C4 9.3 2.5 12.2 2.5 12.2S6 18.5 12 18.5c1.6 0 3-.4 4.2-1M9.9 9.9a3 3 0 0 0 4.2 4.2" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-close" viewBox="0 0 24 24"><path d="M6.5 6.5l11 11m0-11-11 11" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+      <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M16 5.5V5a1.5 1.5 0 0 0-1.5-1.5h-9A1.5 1.5 0 0 0 4 5v9a1.5 1.5 0 0 0 1.5 1.5h.5" fill="none" stroke="currentColor" stroke-width="1.9"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-sort" viewBox="0 0 24 24"><path d="m8 10 4-4 4 4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19.5h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-external" viewBox="0 0 24 24"><path d="M13.5 4.5H19.5V10.5M19.5 4.5 11 13M10 6H6.5A1.5 1.5 0 0 0 5 7.5v10A1.5 1.5 0 0 0 6.5 19h10a1.5 1.5 0 0 0 1.5-1.5V14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    </defs>
+  </svg>
+
+  <!-- ===================== 登录 ===================== -->
   <section id="login" class="login" hidden>
-    <form id="login-form" class="card">
-      <h1>网盘</h1>
-      <label>用户名<input name="username" autocomplete="username" required></label>
-      <label>密码<input name="password" type="password" autocomplete="current-password" required></label>
-      <button class="primary">登录</button>
-      <p class="error" id="login-error"></p>
+    <div class="login-art" aria-hidden="true">
+      <svg class="sparkle s1" viewBox="0 0 24 24"><path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4z"/></svg>
+      <svg class="sparkle s2" viewBox="0 0 24 24"><path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4z"/></svg>
+      <div class="mascots float">
+        <svg class="m-cat"><use href="#cat"/></svg>
+        <svg class="m-fish"><use href="#fish"/></svg>
+        <svg class="m-box"><use href="#box"/></svg>
+      </div>
+    </div>
+    <form id="login-form" class="login-card" novalidate>
+      <h1 class="brand-title"><span class="b-cat">喵喵零</span><span class="b-and">和</span><span class="b-fish">小鱼</span><br>的仓库</h1>
+      <label class="field">
+        <span class="sr-only">用户名</span>
+        <svg class="field-icon"><use href="#i-user"/></svg>
+        <input name="username" autocomplete="username" placeholder="用户名" required>
+      </label>
+      <label class="field">
+        <span class="sr-only">密码</span>
+        <svg class="field-icon"><use href="#i-lock"/></svg>
+        <input name="password" type="password" autocomplete="current-password" placeholder="密码" required>
+        <button type="button" class="eye" aria-label="显示密码"><svg><use href="#i-eye-off"/></svg></button>
+      </label>
+      <button class="btn primary large" type="submit">登 录</button>
+      <div class="login-foot">
+        <label class="checkbox"><input type="checkbox" name="remember" checked><span></span>记住我</label>
+        <button type="button" class="link" id="forgot">忘记密码？</button>
+      </div>
+      <p class="error" id="login-error" role="alert"></p>
     </form>
   </section>
 
-  <section id="app" hidden>
-    <header class="topbar">
-      <strong class="brand">网盘</strong>
-      <nav class="tabs">
-        <button data-view="files" class="active">文件</button>
-        <button data-view="storages">存储</button>
-      </nav>
-      <button id="account-btn" class="ghost" title="账号设置">👤 <span id="account-name"></span></button>
-      <button id="logout" class="ghost">退出</button>
-    </header>
-
-    <main id="view-files" class="view">
-      <div class="toolbar">
-        <nav id="crumbs" class="crumbs"></nav>
-        <div class="actions">
-          <button id="btn-refresh" class="ghost" title="刷新">刷新</button>
-          <button id="btn-mkdir">新建文件夹</button>
-          <label class="button primary">上传<input id="upload-input" type="file" multiple hidden></label>
+  <!-- ===================== 主界面 ===================== -->
+  <section id="app" class="app" hidden>
+    <header class="topbar glass">
+      <a class="brand" href="#/" aria-label="喵喵零和小鱼的仓库，回到全部文件">
+        <span class="brand-mark" aria-hidden="true"><svg class="bm-cat"><use href="#cat"/></svg><svg class="bm-fish"><use href="#fish"/></svg></span>
+        <span class="brand-text"><span class="b-cat">喵喵零</span>和<span class="b-fish">小鱼</span>的仓库</span>
+      </a>
+      <label class="search">
+        <svg><use href="#i-search"/></svg>
+        <span class="sr-only">搜索当前文件夹</span>
+        <input id="search" type="search" placeholder="搜索当前文件夹…" autocomplete="off">
+      </label>
+      <div class="account">
+        <button id="account-btn" class="account-btn" aria-haspopup="menu" aria-expanded="false">
+          <span class="avatar"><svg><use href="#i-user"/></svg></span>
+          <span id="account-name" class="account-name"></span>
+          <svg class="chev"><use href="#i-down"/></svg>
+        </button>
+        <div id="account-menu" class="menu" role="menu" hidden>
+          <button role="menuitem" id="menu-settings"><svg><use href="#i-gear"/></svg>账号设置</button>
+          <button role="menuitem" id="menu-logout"><svg><use href="#i-logout"/></svg>退出登录</button>
         </div>
       </div>
-      <div id="uploads" class="uploads"></div>
-      <div id="drop" class="table-wrap">
-        <table class="files">
-          <thead><tr><th>名称</th><th class="num">大小</th><th class="hide-sm">修改时间</th><th></th></tr></thead>
-          <tbody id="file-rows"></tbody>
-        </table>
-        <p id="empty" class="empty" hidden>空文件夹，拖拽文件到这里上传</p>
-      </div>
-    </main>
+    </header>
 
-    <main id="view-storages" class="view" hidden>
-      <div class="toolbar">
-        <h2>存储挂载</h2>
-        <button id="btn-add-storage" class="primary">添加存储</button>
+    <nav class="sidebar glass" aria-label="主导航">
+      <button class="nav-item" data-view="files"><svg><use href="#i-folder"/></svg><span>全部文件</span></button>
+      <button class="nav-item" data-view="storages"><svg><use href="#i-storage"/></svg><span>存储挂载</span></button>
+      <div class="sidebar-art" aria-hidden="true">
+        <svg class="sa-cat"><use href="#cat"/></svg>
+        <svg class="sa-fish"><use href="#fish"/></svg>
       </div>
-      <div class="table-wrap">
-        <table class="files">
-          <thead><tr><th>挂载路径</th><th>类型</th><th>状态</th><th></th></tr></thead>
-          <tbody id="storage-rows"></tbody>
-        </table>
-        <p id="storage-empty" class="empty" hidden>还没有存储，点击“添加存储”挂载本机目录、S3、WebDAV 或 123云盘</p>
-      </div>
-    </main>
+    </nav>
+
+    <div class="stage">
+      <!-- 文件 -->
+      <main id="view-files" class="view" hidden>
+        <div class="toolbar">
+          <nav id="crumbs" class="crumbs" aria-label="当前位置"></nav>
+          <div class="actions">
+            <button id="btn-refresh" class="btn" title="刷新"><svg><use href="#i-refresh"/></svg><span>刷新</span></button>
+            <button id="btn-mkdir" class="btn"><svg><use href="#i-folder-plus"/></svg><span>新建文件夹</span></button>
+            <label class="btn primary"><svg><use href="#i-upload"/></svg><span>上传文件</span><input id="upload-input" type="file" multiple hidden></label>
+          </div>
+        </div>
+        <div id="drop" class="card table-card">
+          <table class="table files">
+            <thead>
+              <tr>
+                <th class="col-check"><label class="checkbox"><input type="checkbox" id="check-all" aria-label="全选"><span></span></label></th>
+                <th class="col-name"><button class="sort" data-sort="name">文件名<svg><use href="#i-sort"/></svg></button></th>
+                <th class="col-size"><button class="sort" data-sort="size">大小<svg><use href="#i-sort"/></svg></button></th>
+                <th class="col-time"><button class="sort" data-sort="modified">修改时间<svg><use href="#i-sort"/></svg></button></th>
+                <th class="col-act">操作</th>
+              </tr>
+            </thead>
+            <tbody id="file-rows"></tbody>
+          </table>
+          <div id="empty" class="empty" hidden>
+            <div class="empty-art" aria-hidden="true"><svg class="e-cat"><use href="#cat"/></svg><svg class="e-fish"><use href="#fish"/></svg><svg class="e-box"><use href="#box"/></svg></div>
+            <p class="empty-title">这里还空空的</p>
+            <p class="empty-sub">把文件拖到这里，或者点“上传文件”</p>
+          </div>
+          <div class="drop-hint" aria-hidden="true"><svg><use href="#i-upload"/></svg>松开即可上传到当前文件夹</div>
+        </div>
+      </main>
+
+      <!-- 存储 -->
+      <main id="view-storages" class="view" hidden>
+        <div class="page-head">
+          <div>
+            <h1 class="page-title">存储挂载</h1>
+            <p class="page-sub">把不同的存储空间挂载到同一个目录里，统一管理你的文件</p>
+          </div>
+          <button id="btn-add-storage" class="btn primary"><svg><use href="#i-plus"/></svg><span>添加存储</span></button>
+        </div>
+        <div class="card table-card">
+          <table class="table storages">
+            <thead><tr><th>名称</th><th>类型</th><th>挂载路径</th><th>状态</th><th>启用</th><th class="col-act">操作</th></tr></thead>
+            <tbody id="storage-rows"></tbody>
+          </table>
+          <div id="storage-empty" class="empty" hidden>
+            <div class="empty-art" aria-hidden="true"><svg class="e-cat"><use href="#cat"/></svg><svg class="e-fish"><use href="#fish"/></svg><svg class="e-box"><use href="#box"/></svg></div>
+            <p class="empty-title">还没有挂载任何存储</p>
+            <p class="empty-sub">添加本机目录、S3、WebDAV 或 123云盘，就能在这里统一浏览</p>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- 多选操作条 -->
+    <div id="selection-bar" class="selection-bar glass" hidden>
+      <span id="selection-count"></span>
+      <button id="sel-clear" class="btn">取消选择</button>
+      <button id="sel-delete" class="btn danger"><svg><use href="#i-trash"/></svg><span>删除</span></button>
+    </div>
+
+    <!-- 上传进度 -->
+    <section id="uploads" class="uploads glass" aria-live="polite" hidden>
+      <header><strong>上传</strong><span id="uploads-summary"></span></header>
+      <div id="upload-list"></div>
+    </section>
   </section>
 
-  <dialog id="storage-dialog">
-    <form id="storage-form" method="dialog" class="card">
-      <h2 id="storage-title">添加存储</h2>
-      <label>类型<select name="type" id="storage-type"></select></label>
-      <label>挂载路径<input name="mountPath" placeholder="/本地" required></label>
-      <div id="storage-fields"></div>
-      <label class="check"><input type="checkbox" name="enabled" checked> 启用</label>
-      <p class="error" id="storage-error"></p>
-      <div class="row">
-        <button type="button" id="storage-cancel" class="ghost">取消</button>
-        <button class="primary" value="save">保存</button>
+  <!-- 添加/编辑存储：右侧滑出面板（手机上从底部升起） -->
+  <dialog id="storage-dialog" class="drawer" aria-labelledby="storage-title">
+    <form id="storage-form" class="drawer-body" novalidate>
+      <header class="sheet-head">
+        <h2 id="storage-title">添加存储</h2>
+        <button type="button" class="icon-btn" data-close aria-label="关闭"><svg><use href="#i-close"/></svg></button>
+      </header>
+      <div class="sheet-scroll">
+        <label class="stack">存储类型
+          <span class="select-wrap"><select name="type" id="storage-type" autofocus></select><svg><use href="#i-down"/></svg></span>
+        </label>
+        <label class="stack">挂载路径<input name="mountPath" placeholder="/我的存储" required></label>
+        <div id="storage-fields"></div>
+        <div class="switch-row">
+          <span>启用此存储</span>
+          <label class="switch"><input type="checkbox" name="enabled" checked><span></span><b class="sr-only">启用此存储</b></label>
+        </div>
+        <p class="error" id="storage-error" role="alert"></p>
       </div>
+      <footer class="sheet-foot">
+        <button type="button" class="btn" data-close>取消</button>
+        <button class="btn primary" type="submit">保存</button>
+      </footer>
     </form>
   </dialog>
 
-  <dialog id="account-dialog">
-    <form id="account-form" class="card" autocomplete="off">
-      <h2>账号设置</h2>
-      <label>用户名<input name="username" autocomplete="username" required maxlength="32"></label>
-      <label>新密码<input name="newPassword" type="password" autocomplete="new-password" placeholder="留空表示不修改" minlength="8" maxlength="128"></label>
-      <label>确认新密码<input name="confirmPassword" type="password" autocomplete="new-password"></label>
-      <label>当前密码 *<input name="currentPassword" type="password" autocomplete="current-password" required></label>
-      <small class="help">修改后，其他设备上的登录会全部退出。</small>
-      <p class="error" id="account-error"></p>
-      <div class="row">
-        <button type="button" id="account-cancel" class="ghost">取消</button>
-        <button class="primary">保存</button>
+  <!-- 账号设置 -->
+  <dialog id="account-dialog" class="modal" aria-labelledby="account-title">
+    <form id="account-form" class="modal-body" novalidate>
+      <header class="sheet-head">
+        <h2 id="account-title"><span class="title-icon"><svg><use href="#i-gear"/></svg></span>账号设置</h2>
+        <button type="button" class="icon-btn" data-close aria-label="关闭"><svg><use href="#i-close"/></svg></button>
+      </header>
+      <div class="form-grid">
+        <label for="acc-username">用户名</label>
+        <input id="acc-username" name="username" autocomplete="username" required maxlength="32">
+        <label for="acc-current">当前密码</label>
+        <span class="pw"><input id="acc-current" name="currentPassword" type="password" autofocus autocomplete="current-password" placeholder="请输入当前密码" required><button type="button" class="eye" aria-label="显示密码"><svg><use href="#i-eye-off"/></svg></button></span>
+        <label for="acc-new">新密码</label>
+        <span class="pw"><input id="acc-new" name="newPassword" type="password" autocomplete="new-password" placeholder="留空表示不修改" maxlength="128"><button type="button" class="eye" aria-label="显示密码"><svg><use href="#i-eye-off"/></svg></button></span>
+        <label for="acc-confirm">确认新密码</label>
+        <span class="pw"><input id="acc-confirm" name="confirmPassword" type="password" autocomplete="new-password" placeholder="请再次输入新密码"><button type="button" class="eye" aria-label="显示密码"><svg><use href="#i-eye-off"/></svg></button></span>
       </div>
+      <p class="help">新密码至少 8 位。保存后，其他设备上的登录会全部退出。</p>
+      <p class="error" id="account-error" role="alert"></p>
+      <footer class="sheet-foot">
+        <button type="button" class="btn" data-close>取消</button>
+        <button class="btn primary" type="submit">保存</button>
+      </footer>
     </form>
   </dialog>
 
+  <!-- 通用确认/输入对话框（替代浏览器原生 prompt/confirm） -->
+  <dialog id="ask" class="modal small" aria-labelledby="ask-title">
+    <form id="ask-form" class="modal-body" novalidate>
+      <h2 id="ask-title"></h2>
+      <p id="ask-message" class="ask-message"></p>
+      <input id="ask-input" class="ask-input" autocomplete="off" autofocus>
+      <p class="error" id="ask-error" role="alert"></p>
+      <footer class="sheet-foot">
+        <button type="button" class="btn" data-close>取消</button>
+        <button id="ask-ok" class="btn primary" type="submit">确定</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+
+  <!-- 预览 -->
   <dialog id="preview" class="preview">
     <header class="pv-bar">
       <strong id="pv-name" class="pv-name"></strong>
       <span id="pv-status" class="pv-status"></span>
       <span id="pv-count" class="pv-count"></span>
-      <a id="pv-open" class="button ghost" target="_blank" rel="noopener">新标签打开</a>
-      <a id="pv-download" class="button ghost">下载</a>
-      <button id="pv-close" class="ghost" aria-label="关闭">✕</button>
+      <a id="pv-open" class="pv-btn" target="_blank" rel="noopener" title="新标签打开"><svg><use href="#i-external"/></svg><span>新标签打开</span></a>
+      <a id="pv-download" class="pv-btn" title="下载"><svg><use href="#i-download"/></svg><span>下载</span></a>
+      <button id="pv-close" class="pv-btn" aria-label="关闭"><svg><use href="#i-close"/></svg></button>
     </header>
-    <div id="pv-body" class="pv-body"></div>
-    <button id="pv-prev" class="pv-nav prev" aria-label="上一个">‹</button>
-    <button id="pv-next" class="pv-nav next" aria-label="下一个">›</button>
+    <div id="pv-body" class="pv-body" tabindex="-1" autofocus></div>
+    <button id="pv-prev" class="pv-nav prev" aria-label="上一个"><svg><use href="#i-chevron"/></svg></button>
+    <button id="pv-next" class="pv-nav next" aria-label="下一个"><svg><use href="#i-chevron"/></svg></button>
   </dialog>
 
   <script src="app.js" type="module"></script>

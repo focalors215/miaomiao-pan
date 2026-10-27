@@ -73,11 +73,13 @@ function readCookie(req, name) {
   return null;
 }
 
-function setSession(req, res, admin) {
+// remember=false：不设 Max-Age，浏览器关闭后 Cookie 即失效（服务端签名里仍带 7 天上限）
+function setSession(req, res, admin, remember = true) {
   const payload = `${admin.username}|${Math.floor(Date.now() / 1000) + MAX_AGE}|${admin.version}`;
   const token = `${Buffer.from(payload).toString('base64url')}.${sign(payload)}`;
   const secure = req.secure ? '; Secure' : '';
-  res.setHeader('Set-Cookie', `${COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${MAX_AGE}${secure}`);
+  const maxAge = remember ? `; Max-Age=${MAX_AGE}` : '';
+  res.setHeader('Set-Cookie', `${COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax${maxAge}${secure}`);
 }
 
 export function currentUser(req) {
@@ -107,14 +109,14 @@ export function login(req, res) {
   const ip = req.ip;
   const locked = checkThrottle(ip);
   if (locked) return res.status(429).json({ error: `登录失败次数过多，请 ${locked} 分钟后再试` });
-  const { username, password } = req.body || {};
+  const { username, password, remember } = req.body || {};
   const admin = getConfig().admin;
   if (!admin || !safeEqual(username, admin.username) || !verifyPassword(password || '', admin)) {
     recordFailure(ip);
     return res.status(401).json({ error: '用户名或密码错误' });
   }
   failures.delete(ip);
-  setSession(req, res, admin);
+  setSession(req, res, admin, remember !== false);
   res.json({ user: admin.username });
 }
 
