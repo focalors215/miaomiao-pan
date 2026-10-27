@@ -1,5 +1,5 @@
 import { renderPreview as renderMedia } from './preview.js';
-import { $, $$, sleep, reduceMotion, use, esc, fmtSize, fmtTime, join, kindOf, fileIcon } from './common.js';
+import { $, $$, sleep, reduceMotion, use, esc, fmtSize, fmtTime, join, kindOf, fileIcon, applyWallpaper, avatarHtml } from './common.js';
 
 
 async function api(method, url, body) {
@@ -137,6 +137,7 @@ function showLogin() {
   closeMenu(true);
   document.title = '登录 · 喵喵零和小鱼的仓库';
   setTimeout(() => $('#login-form').username.focus(), 50);
+  api('GET', '/api/site').then((site) => applyWallpaper(site, site.login), () => {});
   // 管理员开放注册时才显示“注册”
   api('GET', '/api/register')
     .then((r) => {
@@ -959,9 +960,15 @@ $('#storage-form').addEventListener('submit', async (e) => {
 
 let currentUser = '';
 
-function setUser(user) {
+let currentAvatar = null;
+
+function setUser(user, avatar = currentAvatar) {
   currentUser = user;
+  currentAvatar = avatar;
   $('#account-name').textContent = user;
+  $('#account-btn .avatar').innerHTML = avatarHtml(avatar);
+  $('#acc-avatar').innerHTML = avatarHtml(avatar);
+  $('#avatar-remove').hidden = !avatar;
   menuBtn.setAttribute('aria-label', `账号：${user}`);
 }
 
@@ -1249,6 +1256,7 @@ async function loadSettings() {
   f.publicWritable.checked = st.publicSpace.writable;
   $('#settings-error').textContent = '';
   renderUsers();
+  showAppearance(await api('GET', '/api/site'));
 }
 
 function renderUsers() {
@@ -1262,7 +1270,7 @@ function renderUsers() {
            <button class="act" data-act="toggle">${u.disabled ? '启用' : '停用'}</button>
            <button class="act danger" data-act="delete" aria-label="删除用户 ${esc(u.username)}">${use('i-trash')}</button>`;
       return `<tr data-id="${u.id}" class="row-in"${stagger(i)}>
-        <td><span class="name"><span class="avatar" style="width:32px;height:32px">${use('i-user')}</span><span>${esc(u.username)}${me ? '（你）' : ''}</span></span></td>
+        <td><span class="name"><span class="avatar" style="width:32px;height:32px">${avatarHtml(u.avatar)}</span><span>${esc(u.username)}${me ? '（你）' : ''}</span></span></td>
         <td><span class="pill ${u.role}">${u.role === 'admin' ? '管理员' : '普通用户'}</span></td>
         <td class="muted">${fmtDate(u.createdAt)}</td>
         <td>${u.disabled ? '<span class="status off">已停用</span>' : '<span class="status ok">正常</span>'}</td>
@@ -1330,16 +1338,229 @@ $('#user-rows').addEventListener('click', async (e) => {
 });
 
 // ==========================================================================
+// 头像：选图 → 裁剪（拖动、滚轮/滑块缩放、方向键微调）→ 上传
+// ==========================================================================
+
+/** 上传原始二进制（头像、壁纸），带进度回调 */
+function uploadRaw(url, blob, onProgress) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', url);
+    xhr.setRequestHeader('Content-Type', blob.type || 'application/octet-stream');
+    xhr.upload.onprogress = (e) => e.lengthComputable && onProgress?.(e.loaded / e.total);
+    xhr.onload = () => {
+      let data = {};
+      try {
+        data = JSON.parse(xhr.responseText);
+      } catch {}
+      if (xhr.status === 401) showLogin();
+      xhr.status === 200 ? resolve(data) : reject(new Error(data.error || `上传失败 (${xhr.status})`));
+    };
+    xhr.onerror = () => reject(new Error('网络错误'));
+    xhr.send(blob);
+  });
+}
+
+const crop = { img: $('#crop-img'), stage: $('#crop-stage'), file: null, w: 0, h: 0, base: 1, zoom: 1, x: 0, y: 0, S: 300 };
+
+function cropApply() {
+  const { S, w, h } = crop;
+  const s = crop.base * crop.zoom;
+  // 图片始终盖满取景框：不能拖出空白
+  crop.x = Math.min(0, Math.max(S - w * s, crop.x));
+  crop.y = Math.min(0, Math.max(S - h * s, crop.y));
+  crop.img.style.transform = `translate(${crop.x}px, ${crop.y}px) scale(${s})`;
+}
+
+/** 以舞台上的点 (cx, cy) 为中心缩放 */
+function cropZoom(zoom, cx = crop.S / 2, cy = crop.S / 2) {
+  zoom = Math.min(4, Math.max(1, zoom));
+  const k = zoom / crop.zoom;
+  crop.x = cx - (cx - crop.x) * k;
+  crop.y = cy - (cy - crop.y) * k;
+  crop.zoom = zoom;
+  $('#crop-zoom').value = String(zoom);
+  cropApply();
+}
+
+$('#avatar-input').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  const url = URL.createObjectURL(file);
+  const img = crop.img;
+  img.onload = () => {
+    crop.file = file;
+    crop.w = img.naturalWidth;
+    crop.h = img.naturalHeight;
+    $('#avatar-error').textContent = '';
+    $('#avatar-dialog').showModal();
+    crop.S = crop.stage.clientWidth;
+    crop.base = crop.S / Math.min(crop.w, crop.h); // 短边刚好铺满
+    crop.zoom = 1;
+    $('#crop-zoom').value = '1';
+    crop.x = (crop.S - crop.w * crop.base) / 2;
+    crop.y = (crop.S - crop.h * crop.base) / 2;
+    cropApply();
+    crop.stage.focus();
+  };
+  img.onerror = () => {
+    URL.revokeObjectURL(url);
+    toast('浏览器读不了这张图片（比如 HEIC），请换成 JPEG 或 PNG', 'error');
+  };
+  img.src = url;
+});
+
+{
+  let drag = null;
+  crop.stage.addEventListener('pointerdown', (e) => {
+    drag = { id: e.pointerId, x: e.clientX - crop.x, y: e.clientY - crop.y };
+    crop.stage.setPointerCapture(e.pointerId);
+  });
+  crop.stage.addEventListener('pointermove', (e) => {
+    if (!drag || drag.id !== e.pointerId) return;
+    crop.x = e.clientX - drag.x;
+    crop.y = e.clientY - drag.y;
+    cropApply();
+  });
+  const end = () => (drag = null);
+  crop.stage.addEventListener('pointerup', end);
+  crop.stage.addEventListener('pointercancel', end);
+  crop.stage.addEventListener(
+    'wheel',
+    (e) => {
+      e.preventDefault();
+      const r = crop.stage.getBoundingClientRect();
+      cropZoom(crop.zoom * Math.exp(-e.deltaY / 400), e.clientX - r.left, e.clientY - r.top);
+    },
+    { passive: false },
+  );
+  crop.stage.addEventListener('keydown', (e) => {
+    const step = e.shiftKey ? 30 : 8;
+    const moves = { ArrowLeft: [step, 0], ArrowRight: [-step, 0], ArrowUp: [0, step], ArrowDown: [0, -step] };
+    if (moves[e.key]) {
+      crop.x += moves[e.key][0];
+      crop.y += moves[e.key][1];
+      cropApply();
+    } else if (e.key === '+' || e.key === '=') cropZoom(crop.zoom * 1.1);
+    else if (e.key === '-') cropZoom(crop.zoom / 1.1);
+    else return;
+    e.preventDefault();
+  });
+}
+$('#crop-zoom').addEventListener('input', (e) => cropZoom(Number(e.target.value)));
+
+$('#avatar-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = $('#avatar-save');
+  btn.disabled = true;
+  try {
+    // 取景框里对应的原图区域，输出最大 1024×1024；透明图保留 PNG，其他用高质量 JPEG
+    const s = crop.base * crop.zoom;
+    const src = crop.S / s;
+    const N = Math.max(64, Math.min(1024, Math.round(src)));
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = N;
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(crop.img, -crop.x / s, -crop.y / s, src, src, 0, 0, N, N);
+    const type = /png|webp|gif|avif/.test(crop.file.type) ? 'image/png' : 'image/jpeg';
+    const blob = await new Promise((r) => canvas.toBlob(r, type, 0.92));
+    const { avatar } = await uploadRaw('/api/account/avatar', blob);
+    setUser(currentUser, avatar);
+    URL.revokeObjectURL(crop.img.src);
+    closeDialog($('#avatar-dialog'));
+    toast('头像已更新');
+  } catch (err) {
+    $('#avatar-error').textContent = err.message;
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+$('#avatar-remove').addEventListener('click', async () => {
+  try {
+    await api('DELETE', '/api/account/avatar');
+    setUser(currentUser, null);
+    toast('已移除头像');
+  } catch (err) {
+    toast(err.message, 'error');
+  }
+});
+
+// ==========================================================================
+// 外观（管理员）：壁纸上传原图，遮罩强度和登录页开关改了立即生效
+// ==========================================================================
+
+function showAppearance(site) {
+  const pv = $('#wp-preview');
+  pv.classList.toggle('has-img', !!site.wallpaper);
+  pv.style.backgroundImage = site.wallpaper ? `url("${site.wallpaper.url}")` : '';
+  pv.style.setProperty('--preview-dim', String(site.dim));
+  $('#wp-remove').hidden = !site.wallpaper;
+  $('#wp-dim').value = String(site.dim);
+  $('#wp-dim-value').textContent = `${Math.round(site.dim * 100)}%`;
+  $('#wp-login').checked = site.login;
+  applyWallpaper(site);
+}
+
+$('#wp-input').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  const bar = $('#wp-progress');
+  bar.hidden = false;
+  bar.querySelector('i').style.width = '0';
+  try {
+    const site = await uploadRaw('/api/settings/wallpaper', file, (r) => (bar.querySelector('i').style.width = `${Math.round(r * 100)}%`));
+    showAppearance(site);
+    toast('壁纸已更新');
+  } catch (err) {
+    toast(err.message, 'error');
+  } finally {
+    setTimeout(() => (bar.hidden = true), 400);
+  }
+});
+
+$('#wp-remove').addEventListener('click', async () => {
+  const ok = await ask({ title: '移除壁纸？', message: '恢复成默认的奶油色背景。', confirm: true, okText: '移除' });
+  if (!ok) return;
+  try {
+    showAppearance(await api('DELETE', '/api/settings/wallpaper'));
+    toast('已移除壁纸');
+  } catch (err) {
+    toast(err.message, 'error');
+  }
+});
+
+let dimTimer = null;
+$('#wp-dim').addEventListener('input', (e) => {
+  const dim = Number(e.target.value);
+  $('#wp-dim-value').textContent = `${Math.round(dim * 100)}%`;
+  $('#wp-preview').style.setProperty('--preview-dim', String(dim));
+  document.documentElement.style.setProperty('--wp-dim', String(dim)); // 整个页面实时预览
+  clearTimeout(dimTimer);
+  dimTimer = setTimeout(() => api('PUT', '/api/settings/appearance', { dim }).catch((err) => toast(err.message, 'error')), 400);
+});
+$('#wp-login').addEventListener('change', (e) =>
+  api('PUT', '/api/settings/appearance', { login: e.target.checked }).then(
+    () => toast(e.target.checked ? '登录页和分享页也会显示壁纸' : '登录页和分享页不再显示壁纸'),
+    (err) => toast(err.message, 'error'),
+  ),
+);
+
+// ==========================================================================
 // 启动
 // ==========================================================================
 
 async function start() {
-  const { user, role } = await api('GET', '/api/me');
+  const { user, role, avatar } = await api('GET', '/api/me');
   if (!user) return showLogin();
   currentRole = role;
   document.body.classList.toggle('is-user', role !== 'admin');
   spaceFlags = {};
-  setUser(user);
+  setUser(user, avatar);
+  api('GET', '/api/site').then((site) => applyWallpaper(site), () => {});
   $('#login').hidden = true;
   $('#app').hidden = false;
   setView('files');

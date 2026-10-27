@@ -1,6 +1,6 @@
 // 公开分享页 /s/<id>：不需要登录。根据分享内容显示提取码输入框、单个文件卡片或文件夹列表，可以在线预览和下载
 import { renderPreview as renderMedia } from './preview.js';
-import { $, use, esc, fmtSize, fmtTime, join, kindOf, fileIcon, reduceMotion } from './common.js';
+import { $, use, esc, fmtSize, fmtTime, join, kindOf, fileIcon, reduceMotion, applyWallpaper } from './common.js';
 
 const id = location.pathname.split('/')[2] || '';
 const base = `/api/public/share/${encodeURIComponent(id)}`;
@@ -41,6 +41,7 @@ function expiryText() {
 // ---------- 启动 ----------
 
 async function init() {
+  fetch('/api/site').then((r) => r.json()).then((site) => applyWallpaper(site, site.login), () => {});
   try {
     info = await api('GET', base);
   } catch (e) {

@@ -80,3 +80,23 @@ export function fileIcon(it) {
   return `<span class="ficon" style="background:${FILE_COLORS[kind]}"><svg viewBox="0 0 24 24" aria-hidden="true">${GLYPH[kind]}</svg></span>`;
 }
 
+
+// ==========================================================================
+// 外观：管理员设置的壁纸（壁纸铺在最底层，上面盖一层和背景同色的遮罩保证文字清晰）
+// ==========================================================================
+
+/** show=false 时不显示（比如登录页而管理员没开“登录页也显示”） */
+export function applyWallpaper(site, show = true) {
+  const w = site?.wallpaper;
+  const on = !!w && show;
+  document.body.classList.toggle('has-wallpaper', on);
+  if (on) {
+    document.documentElement.style.setProperty('--wp-img', `url("${w.url}")`);
+    document.documentElement.style.setProperty('--wp-dim', String(w.dim));
+  }
+}
+
+/** 头像：有图片就显示图片，否则显示默认的人形图标 */
+export function avatarHtml(url) {
+  return url ? `<img src="${esc(url)}" alt="" loading="lazy" decoding="async">` : use('i-user');
+}

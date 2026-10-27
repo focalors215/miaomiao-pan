@@ -194,6 +194,17 @@
             <label class="stack">目录<input name="publicDir" placeholder="/"></label>
             <div class="switch-row"><span>普通用户可以上传和修改<small class="help">关闭后普通用户只能浏览和下载</small></span><label class="switch"><input type="checkbox" name="publicWritable"><span></span><b class="sr-only">普通用户可以上传和修改</b></label></div>
           </section>
+          <section class="card set-card appearance-card">
+            <h2>外观</h2>
+            <div id="wp-preview" class="wp-preview"><span>还没有设置壁纸</span></div>
+            <div class="wp-actions">
+              <label class="btn small"><svg><use href="/icons.svg#i-upload"/></svg><span>上传壁纸</span><input id="wp-input" type="file" accept="image/*" hidden></label>
+              <button type="button" class="btn small" id="wp-remove">移除壁纸</button>
+            </div>
+            <div id="wp-progress" class="wp-progress" hidden><i></i></div>
+            <label class="stack">遮罩强度 <output id="wp-dim-value">35%</output><input id="wp-dim" type="range" min="0" max="0.9" step="0.05" value="0.35"><small class="help">越高越接近纯色背景，文字越清晰</small></label>
+            <div class="switch-row"><span>登录页和分享页也显示壁纸</span><label class="switch"><input type="checkbox" id="wp-login"><span></span><b class="sr-only">登录页和分享页也显示壁纸</b></label></div>
+          </section>
           <div class="settings-save"><p class="error" id="settings-error" role="alert"></p><button class="btn primary" type="submit">保存设置</button></div>
         </form>
         <div class="page-head sub"><h2 class="section-title"><svg><use href="/icons.svg#i-users"/></svg>用户</h2></div>
@@ -305,6 +316,14 @@
         <h2 id="account-title"><span class="title-icon"><svg><use href="/icons.svg#i-gear"/></svg></span>账号设置</h2>
         <button type="button" class="icon-btn" data-close aria-label="关闭"><svg><use href="/icons.svg#i-close"/></svg></button>
       </header>
+      <div class="avatar-edit">
+        <span class="avatar xl" id="acc-avatar"></span>
+        <div class="avatar-edit-actions">
+          <label class="btn small"><svg><use href="/icons.svg#i-upload"/></svg><span>更换头像</span><input id="avatar-input" type="file" accept="image/*" hidden></label>
+          <button type="button" class="btn small" id="avatar-remove">移除</button>
+          <small class="help">支持 JPEG、PNG、WebP、GIF、AVIF，大小不限</small>
+        </div>
+      </div>
       <div class="form-grid">
         <label for="acc-username">用户名</label>
         <input id="acc-username" name="username" autocomplete="username" required maxlength="32">
@@ -320,6 +339,29 @@
       <footer class="sheet-foot">
         <button type="button" class="btn" data-close>取消</button>
         <button class="btn primary" type="submit">保存</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <!-- 头像裁剪：拖动调整位置，滑块或滚轮缩放 -->
+  <dialog id="avatar-dialog" class="modal small" aria-labelledby="avatar-title">
+    <form id="avatar-form" class="modal-body" novalidate>
+      <header class="sheet-head">
+        <h2 id="avatar-title">调整头像</h2>
+        <button type="button" class="icon-btn" data-close aria-label="关闭"><svg><use href="/icons.svg#i-close"/></svg></button>
+      </header>
+      <div class="crop-wrap">
+        <div id="crop-stage" class="crop-stage" tabindex="0" aria-label="拖动调整头像位置，方向键微调，加减号缩放">
+          <img id="crop-img" alt="" draggable="false">
+          <div class="crop-mask" aria-hidden="true"></div>
+        </div>
+        <label class="crop-zoom"><svg><use href="/icons.svg#i-search"/></svg><span class="sr-only">缩放</span><input id="crop-zoom" type="range" min="1" max="4" step="0.01" value="1"></label>
+        <p class="help crop-tip">拖动图片调整位置，滑块或滚轮缩放</p>
+      </div>
+      <p class="error" id="avatar-error" role="alert"></p>
+      <footer class="sheet-foot">
+        <button type="button" class="btn" data-close>取消</button>
+        <button class="btn primary" type="submit" id="avatar-save">保存头像</button>
       </footer>
     </form>
   </dialog>

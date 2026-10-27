@@ -6,6 +6,7 @@ import * as auth from './auth.js';
 import * as space from './space.js';
 import * as trash from './trash.js';
 import * as shares from './shares.js';
+import * as assets from './assets.js';
 import * as vfs from './vfs.js';
 import { HttpError } from './vfs.js';
 import { DRIVER_TYPES } from './drivers/index.js';
@@ -43,6 +44,11 @@ app.post('/api/register', async (req, res) => {
   await space.prepareHome(user);
   res.json({ user: user.username, role: user.role, id: user.id });
 });
+
+// ---------- 外观：壁纸和头像（登录页、分享页也要用，所以不需要登录；头像地址里是随机的用户 id） ----------
+app.get('/api/site', (req, res) => res.json(assets.site()));
+app.get('/api/wallpaper', (req, res) => assets.sendWallpaper(res));
+app.get('/api/avatar/:id', (req, res) => assets.sendAvatar(res, auth.findUser(req.params.id)));
 
 // ---------- HLS 分片：会话 id 是随机 UUID，本身就是访问凭据，分享页也要用，所以不要求登录 ----------
 app.get('/api/hls/:id/index.m3u8', (req, res) => {
@@ -127,6 +133,13 @@ api.put('/account', async (req, res) => {
   const { info, renamed } = auth.updateAccount(req, res);
   if (renamed && req.user.role !== 'admin') await space.renameHome(renamed.from, renamed.to).catch((e) => console.error('[space] 私人空间改名失败', e.message));
   res.json(info);
+});
+
+// 头像：请求体就是图片本身（浏览器裁剪好的方图），不限制大小，流式写盘
+api.put('/account/avatar', async (req, res) => res.json({ avatar: await assets.saveAvatar(req.user, req) }));
+api.delete('/account/avatar', async (req, res) => {
+  await assets.removeAvatar(req.user);
+  res.json({ avatar: null });
 });
 
 // ---------- 文件操作（按当前用户的视角解析路径） ----------
@@ -280,11 +293,17 @@ admin.delete('/storages/:id', (req, res) => {
 admin.get('/settings', (req, res) => res.json(space.getSpaceSettings()));
 admin.put('/settings', (req, res) => res.json(space.updateSettings(req.body || {})));
 
+// 壁纸：请求体就是原图，不限制大小，流式写盘；dim 是遮罩强度 0～0.9，login 表示登录页和分享页也显示
+admin.put('/settings/wallpaper', async (req, res) => res.json(await assets.saveWallpaper(req)));
+admin.delete('/settings/wallpaper', async (req, res) => res.json(await assets.removeWallpaper()));
+admin.put('/settings/appearance', (req, res) => res.json(assets.updateWallpaper(req.body || {})));
+
 admin.get('/users', (req, res) => res.json(auth.listUsers()));
 admin.put('/users/:id', (req, res) => res.json(auth.adminUpdateUser(req.user, req.params.id, req.body || {})));
 admin.delete('/users/:id', async (req, res) => {
   const u = auth.adminDeleteUser(req.user, req.params.id);
   shares.removeOwner(u.id); // 他的分享链接全部失效
+  await assets.removeOwner(u.id);
   await trash.purgeOwner(u.id); // 他回收站里的文件彻底删除；私人空间里的文件保留，管理员可以在存储里看到
   res.json({ ok: true });
 });

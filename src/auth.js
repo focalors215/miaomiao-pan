@@ -7,6 +7,7 @@
 import crypto from 'node:crypto';
 import { getConfig, save } from './store.js';
 import { HttpError } from './vfs.js';
+import { avatarUrl } from './assets.js';
 
 const COOKIE = 'pan_session';
 const MAX_AGE = 7 * 24 * 3600;
@@ -32,7 +33,7 @@ export const findUser = (id) => users().find((u) => u.id === id);
 const findByName = (name) => users().find((u) => u.username.toLowerCase() === String(name).trim().toLowerCase());
 
 export function publicUser(u) {
-  return { id: u.id, username: u.username, role: u.role, disabled: !!u.disabled, createdAt: u.createdAt };
+  return { id: u.id, username: u.username, role: u.role, disabled: !!u.disabled, createdAt: u.createdAt, avatar: avatarUrl(u) };
 }
 
 function validateUsername(name, selfId) {
@@ -158,13 +159,13 @@ export function requireAdmin(req, res, next) {
   next();
 }
 
-const sessionInfo = (u) => ({ user: u.username, role: u.role, id: u.id });
+export const sessionInfo = (u) => ({ user: u.username, role: u.role, id: u.id, avatar: avatarUrl(u) });
 
 // ---------- 接口 ----------
 
 export function me(req, res) {
   const u = currentUser(req);
-  res.json(u ? sessionInfo(u) : { user: null, role: null, id: null });
+  res.json(u ? sessionInfo(u) : { user: null, role: null, id: null, avatar: null });
 }
 
 export function login(req, res) {

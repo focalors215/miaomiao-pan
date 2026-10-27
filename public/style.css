@@ -639,6 +639,51 @@ a.act { text-decoration: none; }
 a.act[disabled], button.act[disabled] { opacity: .4; pointer-events: none; }
 
 /* ==========================================================================
+   头像和壁纸
+   ========================================================================== */
+.avatar { overflow: hidden; flex: none; }
+.avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.avatar.xl { width: 88px; height: 88px; box-shadow: 0 6px 18px rgb(28 36 51 / .14); }
+.avatar.xl svg { width: 48px; height: 48px; }
+.avatar-edit { display: flex; align-items: center; gap: 18px; padding: 14px 24px 4px; }
+.avatar-edit-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.avatar-edit-actions .help { flex-basis: 100%; margin: 0; }
+
+/* 裁剪：方形舞台 + 圆形取景框（框外压暗） */
+.crop-wrap { padding: 8px 24px 0; }
+.crop-stage {
+  position: relative; width: min(300px, 100%); aspect-ratio: 1; margin: 0 auto; overflow: hidden;
+  border-radius: var(--r-lg); background: repeating-conic-gradient(var(--card-2) 0 25%, var(--card) 0 50%) 50% / 20px 20px;
+  cursor: grab; touch-action: none; user-select: none;
+}
+.crop-stage:active { cursor: grabbing; }
+.crop-stage img { position: absolute; left: 0; top: 0; transform-origin: 0 0; max-width: none; pointer-events: none; will-change: transform; }
+.crop-mask { position: absolute; inset: 0; border-radius: 50%; box-shadow: 0 0 0 999px rgb(0 0 0 / .45); pointer-events: none; outline: 2px solid rgb(255 255 255 / .9); outline-offset: -2px; }
+.crop-zoom { display: flex; align-items: center; gap: 10px; width: min(300px, 100%); margin: 16px auto 0; color: var(--text-2); }
+.crop-zoom input { flex: 1; min-height: 0; padding: 0; accent-color: var(--accent); background: none; border: 0; box-shadow: none !important; }
+.crop-tip { text-align: center; }
+
+/* 外观设置 */
+.wp-preview {
+  aspect-ratio: 16 / 9; border-radius: var(--r-md); margin-bottom: 12px; display: grid; place-items: center;
+  background: var(--card-2) center / cover no-repeat; color: var(--text-2); font-size: 13px; box-shadow: inset 0 0 0 1px var(--line);
+  position: relative; overflow: hidden;
+}
+.wp-preview.has-img span { display: none; }
+.wp-preview::after { content: ""; position: absolute; inset: 0; background: var(--bg); opacity: var(--preview-dim, 0); transition: opacity var(--t-fast); }
+.wp-actions { display: flex; gap: 8px; margin-bottom: 12px; }
+.wp-progress { height: 6px; border-radius: 99px; background: var(--card-2); overflow: hidden; margin: -4px 0 12px; }
+.wp-progress i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #6FA4FF, var(--accent)); transition: width .2s; }
+.set-card input[type="range"] { min-height: 0; padding: 0; margin-top: 10px; accent-color: var(--accent); background: none; border: 0; box-shadow: none !important; }
+.set-card output { float: right; color: var(--text-2); font-variant-numeric: tabular-nums; font-weight: 400; }
+
+/* 有壁纸时：壁纸铺在最底层，上面盖一层和页面背景同色的遮罩；毛玻璃浮层会透出壁纸的颜色 */
+body.has-wallpaper::before, body.has-wallpaper::after { content: ""; position: fixed; inset: 0; pointer-events: none; }
+body.has-wallpaper::before { z-index: -2; background: var(--wp-img) center / cover no-repeat; animation: fade-in var(--t-slow) ease-out; }
+body.has-wallpaper::after { z-index: -1; background: var(--bg); opacity: var(--wp-dim, .35); transition: opacity var(--t-med); }
+@media (prefers-reduced-transparency: reduce) { body.has-wallpaper::after { opacity: max(var(--wp-dim, .35), .75); } }
+
+/* ==========================================================================
    预览（全屏深色）
    ========================================================================== */
 dialog.preview {

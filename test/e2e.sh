@@ -189,6 +189,7 @@ check "私人空间自动创建且为空" "$(names /我的空间)" ""
 check "看不到管理员的挂载" "$(req -o /dev/null -w '%{http_code}' -G "$BASE/api/fs/list" --data-urlencode 'path=/本地')" 404
 check "不能管理存储" "$(req -o /dev/null -w '%{http_code}' "$BASE/api/storages")" 403
 check "不能修改系统设置" "$(code PUT /api/settings '{}')" 403
+check "不能设置壁纸" "$(curl -s -b "$JAR" -o /dev/null -w '%{http_code}' -H 'Content-Type: image/png' -X PUT --data-binary @"$(dirname "$0")/../public/img/icon-64.png" "$BASE/api/settings/wallpaper")" 403
 check "上传到我的空间" "$(upload /我的空间 "$WORK/小文件.txt")" 200
 check "上传到公共空间" "$(upload /公共空间 "$WORK/小文件.txt")" 200
 JAR=$ADMIN_JAR
@@ -254,6 +255,30 @@ check "删除用户" "$(req -o /dev/null -w '%{http_code}' -X DELETE "$BASE/api/
 check "被删用户的直链失效" "$(curl -s -o /dev/null -w '%{http_code}' "$BASE$DURL")" 404
 B=$(json registration '{"open":false,"inviteCode":""}' privateSpace '{"storageId":"","dir":"/users"}' publicSpace '{"storageId":"","dir":"/","writable":true}')
 code PUT /api/settings "$B" >/dev/null
+
+echo "== 头像和壁纸"
+IMG_DIR="$(cd "$(dirname "$0")/../public/img" && pwd)"
+put_img() { curl -s -b "$JAR" -o /dev/null -w '%{http_code}' -H "Content-Type: $3" -X PUT --data-binary @"$2" "$BASE$1"; }
+check "上传头像（PNG）" "$(put_img /api/account/avatar "$IMG_DIR/apple-touch-icon.png" image/png)" 200
+AVURL=$(req "$BASE/api/me" | jq_ 'j.avatar')
+check "头像地址带版本号" "$(echo "$AVURL" | grep -c '^/api/avatar/.*?v=[0-9]*$')" 1
+curl -s -o "$WORK/av.png" "$BASE$AVURL"
+check "头像不用登录也能显示，且内容一致" "$(md5of "$WORK/av.png")" "$(md5of "$IMG_DIR/apple-touch-icon.png")"
+echo "不是图片" >"$WORK/fake.png"
+check "伪装成图片的文本被拒绝" "$(put_img /api/account/avatar "$WORK/fake.png" image/png)" 415
+check "用户列表里带头像" "$(req "$BASE/api/users" | jq_ 'j.filter(u=>u.avatar).length > 0')" true
+check "移除头像" "$(req -o /dev/null -w '%{http_code}' -X DELETE "$BASE/api/account/avatar")" 200
+check "移除后旧地址失效" "$(curl -s -o /dev/null -w '%{http_code}' "$BASE$AVURL")" 404
+head -c 20000000 /dev/urandom >"$WORK/noise.bin"
+cat "$IMG_DIR/icon-512.png" "$WORK/noise.bin" >"$WORK/big-wall.png"
+check "20MB 壁纸（不限大小）" "$(put_img /api/settings/wallpaper "$WORK/big-wall.png" image/png)" 200
+WPURL=$(curl -s "$BASE/api/site" | jq_ 'j.wallpaper.url')
+check "壁纸原样保存" "$(curl -s "$BASE$WPURL" | (md5sum 2>/dev/null || md5) | cut -d' ' -f1)" "$(md5of "$WORK/big-wall.png")"
+check "调遮罩和登录页开关" "$(code PUT /api/settings/appearance '{"dim":0.5,"login":false}'; curl -s "$BASE/api/site" | jq_ 'j.dim+"/"+j.login')" "2000.5/false"
+check "遮罩超出范围被拒绝" "$(code PUT /api/settings/appearance '{"dim":1.5}')" 400
+check "移除壁纸" "$(req -o /dev/null -w '%{http_code}' -X DELETE "$BASE/api/settings/wallpaper"; curl -s "$BASE/api/site" | jq_ 'j.wallpaper')" "200null"
+code PUT /api/settings/appearance '{"dim":0.35,"login":true}' >/dev/null
+rm -f "$WORK/noise.bin" "$WORK/big-wall.png"
 
 echo "== 修改账号"
 ORIG_USER=$(req "$BASE/api/me" | jq_ 'j.user')
