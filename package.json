@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "自托管网盘：聚合本机存储、S3、WebDAV、123云盘",
+  "description": "喵喵零和小鱼的仓库，自托管网盘：聚合本机存储、S3、WebDAV、123云盘",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js"
