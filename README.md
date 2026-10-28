@@ -44,8 +44,8 @@
 需要 Docker 和 Docker Compose。
 
 ```bash
-git clone git@github.com:focalors215/-.git pan
-cd pan
+git clone git@github.com:focalors215/miaomiao-pan.git
+cd miaomiao-pan
 cp .env.example .env      # 修改 ADMIN_PASSWORD
 docker compose up -d --build
 ```
