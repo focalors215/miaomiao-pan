@@ -8,6 +8,8 @@
 #   PAN_PORT         对外端口，默认 8080（只在首次安装时写进 .env）
 #   ADMIN_USER       管理员用户名，默认 admin（只在首次安装时写进 .env）
 #   ADMIN_PASSWORD   管理员密码，默认随机生成（只在首次安装时写进 .env）
+#   PAN_CONTAINER    容器名，默认 pan（只在首次安装时写进 .env）
+#   PAN_IMAGE        镜像名，默认 pan:latest（只在首次安装时写进 .env）
 #   PAN_BRANCH       使用的分支，默认 main
 #
 # 再次运行就是更新：拉取最新代码并重建容器，不动 .env 和 data/。
@@ -92,7 +94,7 @@ if [ "$FRESH" = 1 ]; then
     die "端口 $PORT 已被占用，请换一个端口重新运行，例如：curl -fsSL https://raw.githubusercontent.com/$REPO/main/install.sh | PAN_PORT=8090 bash"
   fi
   USER_NAME="${ADMIN_USER:-admin}"
-  PASSWORD="${ADMIN_PASSWORD:-$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 16)}"
+  PASSWORD="${ADMIN_PASSWORD:-$(head -c 48 /dev/urandom | base64 | LC_ALL=C tr -dc 'A-Za-z0-9' | cut -c 1-16)}"
   [ -z "${ADMIN_PASSWORD:-}" ] && PASSWORD_SHOWN="$PASSWORD"
   umask 077
   cat >.env <<EOF
@@ -102,6 +104,9 @@ ADMIN_PASSWORD=$PASSWORD
 ADMIN_RESET=false
 PAN_PORT=$PORT
 EOF
+  # 自定义的容器名、镜像名也写进 .env，compose 会读取，更新时不用再指定
+  [ -n "${PAN_CONTAINER:-}" ] && echo "PAN_CONTAINER=$PAN_CONTAINER" >>.env
+  [ -n "${PAN_IMAGE:-}" ] && echo "PAN_IMAGE=$PAN_IMAGE" >>.env
   umask 022
   info "已生成 .env"
 else
@@ -126,7 +131,7 @@ done
 [ "$ok" = 1 ] || warn "60 秒内没有等到服务响应，可以用 cd $DIR && $COMPOSE logs 查看日志"
 
 IP=""
-if have hostname; then IP="$(hostname -I 2>/dev/null | awk '{print $1}')"; fi
+if have hostname; then IP="$(hostname -I 2>/dev/null | awk '{print $1}' || true)"; fi
 IP="${IP:-服务器IP}"
 
 echo
