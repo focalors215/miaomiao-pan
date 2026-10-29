@@ -41,6 +41,43 @@
 
 ## 快速开始
 
+### 一键部署
+
+在 Linux 服务器上运行：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/focalors215/miaomiao-pan/main/install.sh | bash
+```
+
+脚本会：
+
+1. 检查 Docker 和 Docker Compose。没装 Docker 时会询问是否用官方脚本（get.docker.com）安装，需要 root 权限。
+2. 把代码下载到 `~/miaomiao-pan`。
+3. 生成 `.env`，管理员 `admin` 用随机密码。
+4. 构建并启动容器，完成后显示访问地址和密码。
+
+可以在 `bash` 前面加环境变量调整：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/focalors215/miaomiao-pan/main/install.sh | PAN_PORT=8090 ADMIN_PASSWORD=你的密码 bash
+```
+
+| 变量 | 默认值 | 说明 |
+| --- | --- | --- |
+| `PAN_DIR` | `~/miaomiao-pan` | 安装目录 |
+| `PAN_PORT` | `8080` | 对外端口 |
+| `ADMIN_USER` | `admin` | 管理员用户名 |
+| `ADMIN_PASSWORD` | 随机生成 | 管理员密码 |
+| `PAN_CONTAINER` / `PAN_IMAGE` | `pan` / `pan:latest` | 容器名和镜像名，同一台机器上已有叫 `pan` 的容器时改掉 |
+
+端口、账号、密码、容器名和镜像名只在首次安装时写进 `.env`。
+
+**更新：** 再运行一次同样的命令。脚本会拉取最新代码并重建容器，不会改动 `.env` 和 `data/`。如果首次安装时设置过 `PAN_DIR`，更新时要带上同样的值。
+
+**卸载：** 在安装目录里运行 `docker compose down`，再删除整个目录。`data/` 里的配置和本机存储的文件也会一起删掉。
+
+### 手动部署
+
 需要 Docker 和 Docker Compose。
 
 ```bash
