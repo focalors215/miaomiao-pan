@@ -12,6 +12,10 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?请在 .env 中设置 ADMIN_PASSWORD}
       # 忘记密码时设为 true 并重启，会用上面的账号密码重置；重置后改回 false
       ADMIN_RESET: ${ADMIN_RESET:-false}
+      # 内置 OpenList 的连接信息：“添加存储”里的更多网盘（阿里云盘、百度网盘等）由它提供
+      OPENLIST_URL: ${OPENLIST_URL:-http://openlist:5244}
+      OPENLIST_USER: admin
+      OPENLIST_PASSWORD: ${OPENLIST_ADMIN_PASSWORD:-${ADMIN_PASSWORD}}
     volumes:
       - ./data:/data
       # 挂载宿主机目录作为“本机存储”，在网页里添加本机存储时根目录填 /mnt/disk

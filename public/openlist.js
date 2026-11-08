@@ -20,6 +20,42 @@ const DELETE_POLICIES = {
   delete_always: '总是删除',
 };
 
+/** 渲染一个 OpenList 驱动配置项（type: string/number/bool/select/text） */
+export function fieldHtml(it, value, prefix) {
+  const name = `${prefix}.${it.name}`;
+  const label = esc(it.name.replace(/_/g, ' '));
+  const help = it.help ? `<small class="help">${esc(it.help)}</small>` : '';
+  const v = value ?? it.default ?? '';
+  if (it.type === 'bool') {
+    const on = v === true || v === 'true';
+    return `<div class="check-row"><span>${label}${help}</span><label class="switch"><input type="checkbox" name="${name}" data-type="bool" ${on ? 'checked' : ''}><span></span><b class="sr-only">${label}</b></label></div>`;
+  }
+  if (it.type === 'select') {
+    const opts = String(it.options || '').split(',').filter(Boolean).map((o) => `<option value="${esc(o)}" ${o === v ? 'selected' : ''}>${esc(o)}</option>`).join('');
+    return `<label class="stack">${label}<span class="select-wrap"><select name="${name}">${opts}</select>${use('i-down')}</span>${help}</label>`;
+  }
+  const secret = /password|secret|token|key/i.test(it.name) && it.type !== 'number';
+  const req = it.required ? ' required' : '';
+  const star = it.required ? ' <span style="color:var(--danger)">*</span>' : '';
+  if (it.type === 'text') return `<label class="stack">${label}${star}<textarea name="${name}" rows="3"${req}>${esc(v)}</textarea>${help}</label>`;
+  const input = `<input name="${name}" data-type="${it.type === 'number' ? 'number' : 'string'}" value="${esc(v)}" ${secret ? 'type="password" autocomplete="new-password"' : it.type === 'number' ? 'type="number"' : ''}${req}>`;
+  const field = secret ? `<span class="pw">${input}<button type="button" class="eye" aria-label="显示密码">${use('i-eye-off')}</button></span>` : input;
+  return `<label class="stack">${label}${star}${field}${help}</label>`;
+}
+
+/** 读取 fieldHtml 渲染出的表单：通用项（c.*）和驱动专属项（a.*） */
+export function readDriverForm(form) {
+  const read = (el) => (el.tagName === 'SELECT' ? el.value : el.dataset.type === 'bool' ? el.checked : el.dataset.type === 'number' ? Number(el.value || 0) : el.value);
+  const common = {};
+  const addition = {};
+  for (const el of form.elements) {
+    if (!el.name) continue;
+    if (el.name.startsWith('c.')) common[el.name.slice(2)] = read(el);
+    else if (el.name.startsWith('a.')) addition[el.name.slice(2)] = read(el);
+  }
+  return { common, addition };
+}
+
 export function createOpenlist({ api, toast, ask, closeDialog, selectSegment }) {
   const call = (method, target, body) => api('POST', '/api/openlist/call', { method, api: target, body }).then((r) => r.data);
   let tab = 'storages';
@@ -120,28 +156,6 @@ export function createOpenlist({ api, toast, ask, closeDialog, selectSegment }) 
     loadStorages();
   });
 
-  /** 渲染一个 OpenList 驱动配置项（type: string/number/bool/select/text） */
-  function fieldHtml(it, value, prefix) {
-    const name = `${prefix}.${it.name}`;
-    const label = esc(it.name.replace(/_/g, ' '));
-    const help = it.help ? `<small class="help">${esc(it.help)}</small>` : '';
-    const v = value ?? it.default ?? '';
-    if (it.type === 'bool') {
-      const on = v === true || v === 'true';
-      return `<div class="check-row"><span>${label}${help}</span><label class="switch"><input type="checkbox" name="${name}" data-type="bool" ${on ? 'checked' : ''}><span></span><b class="sr-only">${label}</b></label></div>`;
-    }
-    if (it.type === 'select') {
-      const opts = String(it.options || '').split(',').filter(Boolean).map((o) => `<option value="${esc(o)}" ${o === v ? 'selected' : ''}>${esc(o)}</option>`).join('');
-      return `<label class="stack">${label}<span class="select-wrap"><select name="${name}">${opts}</select>${use('i-down')}</span>${help}</label>`;
-    }
-    const secret = /password|secret|token|key/i.test(it.name) && it.type !== 'number';
-    const req = it.required ? ' required' : '';
-    const star = it.required ? ' <span style="color:var(--danger)">*</span>' : '';
-    if (it.type === 'text') return `<label class="stack">${label}${star}<textarea name="${name}" rows="3"${req}>${esc(v)}</textarea>${help}</label>`;
-    const input = `<input name="${name}" data-type="${it.type === 'number' ? 'number' : 'string'}" value="${esc(v)}" ${secret ? 'type="password" autocomplete="new-password"' : it.type === 'number' ? 'type="number"' : ''}${req}>`;
-    const field = secret ? `<span class="pw">${input}<button type="button" class="eye" aria-label="显示密码">${use('i-eye-off')}</button></span>` : input;
-    return `<label class="stack">${label}${star}${field}${help}</label>`;
-  }
 
   function renderDriverFields(driver, s) {
     const d = drivers[driver];
@@ -185,15 +199,8 @@ export function createOpenlist({ api, toast, ask, closeDialog, selectSegment }) 
       $('#ol-error').textContent = `请填写“${missing.closest('label').firstChild.textContent.trim()}”`;
       return missing.focus();
     }
-    const read = (el) => (el.dataset.type === 'bool' ? el.checked : el.dataset.type === 'number' ? Number(el.value || 0) : el.value);
-    const body = { driver, addition: '' };
-    const add = {};
-    for (const el of form.elements) {
-      if (!el.name) continue;
-      if (el.name.startsWith('c.')) body[el.name.slice(2)] = el.tagName === 'SELECT' ? el.value : read(el);
-      else if (el.name.startsWith('a.')) add[el.name.slice(2)] = el.tagName === 'SELECT' ? el.value : read(el);
-    }
-    body.addition = JSON.stringify(add);
+    const { common, addition } = readDriverForm(form);
+    const body = { driver, ...common, addition: JSON.stringify(addition) };
     if (editing) body.id = editing.id;
     const btn = form.querySelector('button[type="submit"]');
     btn.disabled = true;

@@ -99,12 +99,6 @@ export function initDrivers() {
   }
 }
 
-/** 第一个已挂载的指定类型驱动（OpenList 管理接口用） */
-export function firstDriverOfType(type) {
-  for (const s of getConfig().storages) if (s.type === type && drivers.has(s.id)) return drivers.get(s.id);
-  return null;
-}
-
 /** 找到路径所属的挂载点（最长前缀匹配），返回驱动和存储内部路径 */
 export function resolve(p) {
   const full = normalize(p);
@@ -161,7 +155,7 @@ function publicStorage(s) {
   const fields = DRIVER_TYPES[s.type]?.fields || [];
   const options = { ...s.options };
   for (const f of fields) if (f.secret && options[f.key]) options[f.key] = '******';
-  return { id: s.id, type: s.type, mountPath: s.mountPath, enabled: s.enabled, options, mounted: drivers.has(s.id) };
+  return { id: s.id, type: s.type, mountPath: s.mountPath, enabled: s.enabled, options, mounted: drivers.has(s.id), managed: s.managed ? { driver: s.managed.driver } : undefined };
 }
 
 export function listStorages() {
@@ -190,8 +184,8 @@ function checkStorage(input, existing) {
   return { type, mountPath, options, enabled: input.enabled !== false };
 }
 
-export function addStorage(input) {
-  const s = { id: crypto.randomUUID(), ...checkStorage(input), state: {} };
+export function addStorage(input, extra = {}) {
+  const s = { id: crypto.randomUUID(), ...checkStorage(input), state: {}, ...extra };
   makeDriver(s); // 先校验能否创建
   getConfig().storages.push(s);
   save();
