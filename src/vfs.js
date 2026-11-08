@@ -99,6 +99,12 @@ export function initDrivers() {
   }
 }
 
+/** 第一个已挂载的指定类型驱动（OpenList 管理接口用） */
+export function firstDriverOfType(type) {
+  for (const s of getConfig().storages) if (s.type === type && drivers.has(s.id)) return drivers.get(s.id);
+  return null;
+}
+
 /** 找到路径所属的挂载点（最长前缀匹配），返回驱动和存储内部路径 */
 export function resolve(p) {
   const full = normalize(p);

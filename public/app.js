@@ -1,4 +1,5 @@
 import { renderPreview as renderMedia } from './preview.js';
+import { createOpenlist } from './openlist.js';
 import { $, $$, sleep, reduceMotion, use, esc, fmtSize, fmtTime, join, kindOf, fileIcon, applyWallpaper, avatarHtml } from './common.js';
 
 
@@ -251,9 +252,10 @@ $('#menu-settings').addEventListener('click', () => {
 // 视图切换：侧边栏胶囊滑动 + 页面横向滑入
 // ==========================================================================
 
-const VIEWS = ['files', 'trash', 'shares', 'storages', 'settings'];
-const VIEW_TITLES = { trash: '回收站', shares: '分享管理', storages: '存储挂载', settings: '系统设置' };
+const VIEWS = ['files', 'trash', 'shares', 'storages', 'openlist', 'settings'];
+const VIEW_TITLES = { trash: '回收站', shares: '分享管理', storages: '存储挂载', openlist: 'OpenList', settings: '系统设置' };
 let currentView = null;
+const openlist = createOpenlist({ api, toast, ask, closeDialog, selectSegment: (el, pick) => selectSegment(el, pick) });
 
 function movePill() {
   const active = $('.nav-item.active');
@@ -291,7 +293,8 @@ function setView(view) {
   }
   $('.search').style.visibility = view === 'files' ? '' : 'hidden';
   if (VIEW_TITLES[view]) document.title = `${VIEW_TITLES[view]} · 喵喵零和小鱼的仓库`;
-  ({ files: loadFiles, trash: loadTrash, shares: loadShares, storages: loadStorages, settings: loadSettings })[view]();
+  ({ files: loadFiles, trash: loadTrash, shares: loadShares, storages: loadStorages, openlist: () => openlist.load(), settings: loadSettings })[view]();
+  if (view !== 'openlist') openlist.stop();
 }
 $$('.nav-item').forEach((b) =>
   b.addEventListener('click', () => {

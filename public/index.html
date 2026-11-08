@@ -91,6 +91,7 @@
       <button class="nav-item" data-view="trash"><svg><use href="/icons.svg#i-trash"/></svg><span>回收站</span></button>
       <button class="nav-item" data-view="shares"><svg><use href="/icons.svg#i-share"/></svg><span>分享管理</span></button>
       <button class="nav-item admin-only" data-view="storages"><svg><use href="/icons.svg#i-storage"/></svg><span>存储挂载</span></button>
+      <button class="nav-item admin-only" data-view="openlist"><svg><use href="/icons.svg#i-download"/></svg><span>OpenList</span></button>
       <button class="nav-item admin-only" data-view="settings"><svg><use href="/icons.svg#i-gear"/></svg><span>系统设置</span></button>
       <div class="sidebar-art" aria-hidden="true"><img src="/img/mascot.webp" width="640" height="514" alt=""></div>
     </nav>
@@ -218,6 +219,87 @@
         </div>
       </main>
 
+
+      <!-- OpenList 管理（管理员） -->
+      <main id="view-openlist" class="view" hidden>
+        <div class="page-head">
+          <div>
+            <h1 class="page-title">OpenList</h1>
+            <p class="page-sub">70+ 种网盘驱动、离线下载、任务和搜索索引，由 OpenList 在后台处理</p>
+          </div>
+          <button id="ol-add" class="btn primary"><svg><use href="/icons.svg#i-plus"/></svg><span>添加网盘</span></button>
+        </div>
+        <div id="ol-missing" class="card ol-missing" hidden>
+          <p class="empty-title">还没有连接 OpenList</p>
+          <p class="empty-sub" id="ol-missing-msg"></p>
+        </div>
+        <div id="ol-body">
+          <div id="ol-tabs" class="segmented ol-tabs-row" role="tablist" aria-label="OpenList 功能">
+            <span class="seg-thumb" aria-hidden="true"></span>
+            <button type="button" role="tab" data-tab="storages" aria-selected="true">网盘驱动</button>
+            <button type="button" role="tab" data-tab="offline" aria-selected="false">离线下载</button>
+            <button type="button" role="tab" data-tab="tasks" aria-selected="false">任务</button>
+            <button type="button" role="tab" data-tab="index" aria-selected="false">搜索索引</button>
+            <button type="button" role="tab" data-tab="settings" aria-selected="false">站点设置</button>
+          </div>
+          <div id="ol-storages" class="ol-panel">
+            <div class="card table-card">
+              <table class="table storages">
+                <thead><tr><th>挂载路径</th><th>驱动</th><th>状态</th><th>启用</th><th class="col-act">操作</th></tr></thead>
+                <tbody id="ol-storage-rows"></tbody>
+              </table>
+              <div id="ol-storage-empty" class="empty" hidden>
+                <p class="empty-title">OpenList 里还没有网盘</p>
+                <p class="empty-sub">点右上角“添加网盘”，选择阿里云盘、百度网盘、OneDrive 等驱动</p>
+              </div>
+            </div>
+          </div>
+          <div id="ol-offline" class="ol-panel" hidden>
+            <form id="ol-offline-form" class="card" novalidate>
+              <label class="stack">下载链接（一行一个，支持 HTTP、磁力、种子链接）<textarea name="urls" rows="5" placeholder="https://example.com/file.zip"></textarea></label>
+              <label class="stack">保存到（OpenList 路径）<input name="dest" placeholder="/阿里云盘/下载"></label>
+              <label class="stack">下载工具<span class="select-wrap"><select name="tool"></select><svg><use href="/icons.svg#i-down"/></svg></span></label>
+              <label class="stack">转存后的临时文件<span class="select-wrap"><select name="policy"></select><svg><use href="/icons.svg#i-down"/></svg></span></label>
+              <p class="error" id="ol-offline-error" role="alert"></p>
+              <button class="btn primary" type="submit"><svg><use href="/icons.svg#i-download"/></svg><span>开始下载</span></button>
+            </form>
+          </div>
+          <div id="ol-tasks" class="ol-panel" hidden>
+            <div class="ol-row"><button id="ol-task-clear" class="btn small">清除已完成</button></div>
+            <div class="card table-card">
+              <table class="table">
+                <thead><tr><th class="col-name">任务</th><th>类型</th><th>状态</th><th>进度</th><th class="col-act">操作</th></tr></thead>
+                <tbody id="ol-task-rows"></tbody>
+              </table>
+              <div id="ol-task-empty" class="empty" hidden><p class="empty-title">没有任务</p></div>
+            </div>
+          </div>
+          <div id="ol-index" class="ol-panel" hidden>
+            <section class="card">
+              <h2 class="section-title">搜索索引</h2>
+              <p id="ol-index-state" class="help"></p>
+              <div id="ol-index-actions" class="ol-row">
+                <button class="btn primary small" data-index="build">构建索引</button>
+                <button class="btn small" data-index="update">更新索引</button>
+                <button class="btn small" data-index="stop">停止</button>
+                <button class="btn danger small" data-index="clear">清空</button>
+              </div>
+            </section>
+            <form id="ol-search-form" class="card" novalidate>
+              <div class="ol-row"><input name="keywords" placeholder="在所有网盘里搜索文件名…" style="flex:1;min-width:200px"><button class="btn primary" type="submit"><svg><use href="/icons.svg#i-search"/></svg><span>搜索</span></button></div>
+              <table class="table"><tbody id="ol-search-rows"></tbody></table>
+            </form>
+          </div>
+          <div id="ol-settings" class="ol-panel" hidden>
+            <form id="ol-setting-form" class="card" novalidate>
+              <label class="stack">分组<span class="select-wrap"><select id="ol-setting-group"></select><svg><use href="/icons.svg#i-down"/></svg></span></label>
+              <div id="ol-setting-fields"></div>
+              <button class="btn primary" type="submit">保存</button>
+            </form>
+          </div>
+        </div>
+      </main>
+
       <!-- 存储 -->
       <main id="view-storages" class="view" hidden>
         <div class="page-head">
@@ -273,6 +355,27 @@
           <label class="switch"><input type="checkbox" name="enabled" checked><span></span><b class="sr-only">启用此存储</b></label>
         </div>
         <p class="error" id="storage-error" role="alert"></p>
+      </div>
+      <footer class="sheet-foot">
+        <button type="button" class="btn" data-close>取消</button>
+        <button class="btn primary" type="submit">保存</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <!-- 添加/编辑 OpenList 网盘 -->
+  <dialog id="ol-dialog" class="drawer" aria-labelledby="ol-title">
+    <form id="ol-form" class="drawer-body" novalidate>
+      <header class="sheet-head">
+        <h2 id="ol-title">添加 OpenList 存储</h2>
+        <button type="button" class="icon-btn" data-close aria-label="关闭"><svg><use href="/icons.svg#i-close"/></svg></button>
+      </header>
+      <div class="sheet-scroll">
+        <label class="stack">驱动
+          <span class="select-wrap"><select id="ol-driver"></select><svg><use href="/icons.svg#i-down"/></svg></span>
+        </label>
+        <div id="ol-fields"></div>
+        <p class="error" id="ol-error" role="alert"></p>
       </div>
       <footer class="sheet-foot">
         <button type="button" class="btn" data-close>取消</button>

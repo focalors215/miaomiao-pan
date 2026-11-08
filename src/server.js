@@ -290,6 +290,19 @@ admin.delete('/storages/:id', (req, res) => {
   res.json({ ok: true });
 });
 
+// OpenList 管理：存储、离线下载、任务、搜索索引、站点设置，全部转发给已挂载的 OpenList 实例。
+// 只放行下面这些接口，路径里不允许出现 ..
+const OPENLIST_ALLOW = /^\/api\/(admin\/(storage|driver|task|index|setting|meta)\/|fs\/(add_offline_download|search)$|public\/(offline_download_tools|settings)$)/;
+admin.post('/openlist/call', async (req, res) => {
+  const { method = 'GET', api: target, body } = req.body || {};
+  if (typeof target !== 'string' || target.includes('..') || !OPENLIST_ALLOW.test(target.split('?')[0])) {
+    throw new HttpError(400, '不支持的 OpenList 接口');
+  }
+  const d = vfs.firstDriverOfType('openlist');
+  if (!d) throw new HttpError(409, '还没有挂载 OpenList：先在“存储挂载”里添加一个 OpenList 存储');
+  res.json({ data: await d.call(String(method).toUpperCase() === 'GET' ? 'GET' : 'POST', target, body) });
+});
+
 admin.get('/settings', (req, res) => res.json(space.getSpaceSettings()));
 admin.put('/settings', (req, res) => res.json(space.updateSettings(req.body || {})));
 

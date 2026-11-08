@@ -163,7 +163,7 @@ input:not([type="checkbox"]):focus, select:focus {
 }
 input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; }
 label.stack { display: block; margin-bottom: 16px; font-size: 14px; font-weight: 600; color: var(--text); }
-label.stack > input, label.stack > .select-wrap, label.stack > select { margin-top: 8px; font-weight: 400; }
+label.stack > input, label.stack > textarea, label.stack > .select-wrap, label.stack > select { margin-top: 8px; font-weight: 400; }
 .select-wrap { position: relative; display: block; }
 .select-wrap select { appearance: none; padding-right: 40px; }
 .select-wrap svg { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: var(--text-2); pointer-events: none; }
@@ -408,6 +408,7 @@ td.muted { color: var(--text-2); font-variant-numeric: tabular-nums; }
 .sicon.s3 { background: linear-gradient(145deg, #FF9F5A, #E8590C); }
 .sicon.webdav { background: linear-gradient(145deg, #B794F6, #7C3AED); }
 .sicon.pan123 { background: linear-gradient(145deg, #4C9BFF, #1D6CF2); }
+.sicon.openlist { background: linear-gradient(145deg, #34D399, #059669); }
 .stext { min-width: 0; }
 .stext b { display: block; font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
 .stext small { display: block; color: var(--text-2); font-size: 13px; overflow: hidden; text-overflow: ellipsis; }
@@ -416,10 +417,18 @@ td.muted { color: var(--text-2); font-variant-numeric: tabular-nums; }
 .pill.s3 { background: #FFEEDF; color: #B04A08; }
 .pill.webdav { background: #EFE7FD; color: #6D28D9; }
 .pill.pan123 { background: #E3EEFF; color: #1B5FD8; }
+.pill.openlist { background: #DDF7EA; color: #047857; }
+.ol-tabs-row { margin: 0 0 16px; }
+.ol-panel { display: grid; gap: 16px; }
+.ol-panel .card { padding: 20px; }
+.ol-panel textarea, .stack textarea { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); resize: vertical; }
+.ol-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.ol-missing { text-align: center; padding: 40px 20px; }
 @media (prefers-color-scheme: dark) {
   .pill.local, .pill.pan123 { background: #1E2A44; color: #8DB4FF; }
   .pill.s3 { background: #3A2618; color: #FFB27A; }
   .pill.webdav { background: #2D2442; color: #C4A5FF; }
+  .pill.openlist { background: #123326; color: #6EE7B7; }
 }
 .mpath a { color: var(--text); text-decoration: none; }
 .mpath a:hover { color: var(--accent-text); text-decoration: underline; }
