@@ -804,8 +804,9 @@ const STORAGE_ICON = {
   s3: 'S3',
   webdav: 'DAV',
   pan123: '123',
+  openlist: 'OL',
 };
-const STORAGE_SHORT = { local: '本地', s3: 'S3', webdav: 'WebDAV', pan123: '123云盘' };
+const STORAGE_SHORT = { local: '本地', s3: 'S3', webdav: 'WebDAV', pan123: '123云盘', openlist: 'OpenList' };
 
 function storageDetail(s) {
   const o = s.options || {};
@@ -820,6 +821,7 @@ function storageDetail(s) {
   if (s.type === 'local') return `本机目录 ${o.root || ''}`;
   if (s.type === 's3') return `${o.bucket || ''}${o.prefix ? '/' + o.prefix : ''} · ${o.endpoint ? host(o.endpoint) : 'AWS'} · ${mode}`;
   if (s.type === 'webdav') return `${host(o.url)}${o.root && o.root !== '/' ? o.root : ''}`;
+  if (s.type === 'openlist') return `${host(o.url)}${o.root && o.root !== '/' ? o.root : ''} · ${mode}`;
   if (s.type === 'pan123') return `${String(o.rootFolderId || '0') === '0' ? '整个网盘' : '文件夹 ' + o.rootFolderId} · ${mode}`;
   return '';
 }

@@ -16,3 +16,17 @@ services:
       - ./data:/data
       # 挂载宿主机目录作为“本机存储”，在网页里添加本机存储时根目录填 /mnt/disk
       # - /srv/files:/mnt/disk
+
+  # 内嵌 OpenList：在它的管理界面（默认 5244 端口）里配置阿里云盘、百度网盘、OneDrive 等 70+ 种存储，
+  # 然后在本站“添加存储”里选 OpenList 即可挂载。不需要时可以删掉这一段。
+  openlist:
+    image: ${OPENLIST_IMAGE:-openlistteam/openlist:latest}
+    container_name: ${OPENLIST_CONTAINER:-openlist}
+    restart: unless-stopped
+    ports:
+      # 管理界面只绑定本机，需要远程访问请自行加反向代理
+      - "127.0.0.1:${OPENLIST_PORT:-5244}:5244"
+    environment:
+      UMASK: "022"
+    volumes:
+      - ./data/openlist:/opt/openlist/data

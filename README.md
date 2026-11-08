@@ -38,6 +38,7 @@
 | S3 存储桶 | AWS S3、MinIO、阿里云 OSS、腾讯云 COS、Cloudflare R2 等兼容 S3 的服务 |
 | WebDAV | 任意 WebDAV 服务（如 Nextcloud、群晖、坚果云） |
 | 123云盘 | 123云盘开放平台，需要开发者权益包的 client_id / client_secret |
+| OpenList | 通过 [OpenList](https://github.com/OpenListTeam/OpenList) 接入阿里云盘、百度网盘、OneDrive、Google Drive 等 70+ 种存储 |
 
 ## 快速开始
 
@@ -244,6 +245,17 @@ docker compose up -d --build
 ### WebDAV
 
 填服务地址、用户名、密码，可以指定根路径。下载经服务器中转，不会把 WebDAV 账号暴露给浏览器。
+
+### OpenList
+
+`docker-compose.yml` 里已经带了一个 `openlist` 服务（管理界面 `http://127.0.0.1:5244`，只绑定本机）。
+
+1. `docker compose up -d` 后，用 `docker compose logs openlist` 找到 OpenList 的初始管理员密码，登录管理界面。
+2. 在 OpenList 的“存储”里添加阿里云盘、百度网盘、OneDrive 等任意存储。
+3. 在本站“添加存储”选 **OpenList**，地址保持 `http://openlist:5244`，填 OpenList 的账号密码；“挂载的 OpenList 路径”可以只挂其中一个子目录。
+4. 下载默认走服务器代理；如果 OpenList 对外可访问，填“对外地址”后可改用 302 重定向。
+
+已有外部 OpenList 时，删掉 compose 里的 `openlist` 段，地址填它的 URL 即可。
 
 ### 123云盘
 
