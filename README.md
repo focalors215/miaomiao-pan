@@ -246,6 +246,10 @@ docker compose up -d --build
 
 填服务地址、用户名、密码，可以指定根路径。下载经服务器中转，不会把 WebDAV 账号暴露给浏览器。
 
+### 更多网盘（阿里云盘、百度网盘、OneDrive 等）
+
+用自带的 compose 部署后，在“存储挂载 → 添加存储”的类型下拉里，“更多网盘（由 OpenList 提供）”一组就是 OpenList 的 90+ 种驱动。选一个、填它的参数、给个挂载路径即可：本站会在内置的 OpenList 里创建对应存储，并挂载到你的目录树里；删除时同步清理。下面的“OpenList”一节是连接已有 OpenList 实例的用法。
+
 ### OpenList
 
 `docker-compose.yml` 里已经带了一个 `openlist` 服务（管理界面 `http://127.0.0.1:5244`，只绑定本机）。
