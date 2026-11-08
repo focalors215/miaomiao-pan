@@ -10,6 +10,7 @@ import { LocalDriver } from './local.js';
 import { S3Driver } from './s3.js';
 import { WebDAVDriver } from './webdav.js';
 import { Pan123Driver } from './pan123.js';
+import { OpenListDriver } from './openlist.js';
 import { downloadModeField } from './util.js';
 
 export const DRIVER_TYPES = {
@@ -50,6 +51,18 @@ export const DRIVER_TYPES = {
       { key: 'clientSecret', label: 'client_secret', required: true, secret: true },
       { key: 'rootFolderId', label: '根目录 ID（0 为网盘根目录）', default: '0' },
       { ...downloadModeField, help: '服务器代理会消耗 123云盘的下载流量和你服务器的带宽' },
+    ],
+  },
+  openlist: {
+    label: 'OpenList（70+ 网盘）',
+    cls: OpenListDriver,
+    fields: [
+      { key: 'url', label: 'OpenList 地址', required: true, default: 'http://openlist:5244', placeholder: 'http://openlist:5244' },
+      { key: 'username', label: 'OpenList 用户名', required: true, default: 'admin' },
+      { key: 'password', label: 'OpenList 密码', secret: true },
+      { key: 'root', label: '挂载的 OpenList 路径', default: '/' },
+      { key: 'publicUrl', label: '对外地址（可选，重定向模式用）', placeholder: 'https://openlist.example.com' },
+      { ...downloadModeField, default: 'proxy', help: '默认服务器代理；OpenList 地址浏览器能直接访问时可选 302' },
     ],
   },
 };
