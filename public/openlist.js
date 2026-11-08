@@ -299,7 +299,9 @@ export function createOpenlist({ api, toast, ask, closeDialog, selectSegment }) 
       const state = p.error ? `出错：${p.error}` : p.is_done ? '已完成' : '构建中…';
       $('#ol-index-state').textContent = `${state} · 已索引 ${p.obj_count ?? 0} 个文件${p.last_done_time ? ' · ' + new Date(p.last_done_time).toLocaleString() : ''}`;
     } catch (err) {
-      if (!quiet) fail(err);
+      if (/not available|not enable/i.test(err.message)) {
+        $('#ol-index-state').textContent = '搜索索引未启用：到“站点设置 → 索引”里把搜索器改成 database，保存后再回来构建索引';
+      } else if (!quiet) fail(err);
     }
   }
 

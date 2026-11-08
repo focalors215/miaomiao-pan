@@ -29,6 +29,8 @@ services:
       # 管理界面只绑定本机，需要远程访问请自行加反向代理
       - "127.0.0.1:${OPENLIST_PORT:-5244}:5244"
     environment:
+      # OpenList 管理员账号 admin 的初始密码，默认和本站管理员密码相同；首次启动时生效
+      OPENLIST_ADMIN_PASSWORD: ${OPENLIST_ADMIN_PASSWORD:-${ADMIN_PASSWORD}}
       UMASK: "022"
     volumes:
       - ./data/openlist:/opt/openlist/data

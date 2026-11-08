@@ -250,7 +250,7 @@ docker compose up -d --build
 
 `docker-compose.yml` 里已经带了一个 `openlist` 服务（管理界面 `http://127.0.0.1:5244`，只绑定本机）。
 
-1. `docker compose up -d` 后，用 `docker compose logs openlist` 找到 OpenList 的初始管理员密码，登录管理界面。
+1. `docker compose up -d` 后，用账号 `admin`、密码 `.env` 里的 `ADMIN_PASSWORD`（可用 `OPENLIST_ADMIN_PASSWORD` 单独指定）登录 OpenList 管理界面。这个密码只在 OpenList 首次启动时生效。
 2. 在 OpenList 的“存储”里添加阿里云盘、百度网盘、OneDrive 等任意存储。
 3. 在本站“添加存储”选 **OpenList**，地址保持 `http://openlist:5244`，填 OpenList 的账号密码；“挂载的 OpenList 路径”可以只挂其中一个子目录。
 4. 下载默认走服务器代理；如果 OpenList 对外可访问，填“对外地址”后可改用 302 重定向。
