@@ -23,6 +23,8 @@ services:
     image: ${OPENLIST_IMAGE:-openlistteam/openlist:latest}
     container_name: ${OPENLIST_CONTAINER:-openlist}
     restart: unless-stopped
+    # 新版 OpenList 默认用非 root 用户运行，写不了 ./data；和 pan 容器一样用 root
+    user: "0:0"
     ports:
       # 管理界面只绑定本机，需要远程访问请自行加反向代理
       - "127.0.0.1:${OPENLIST_PORT:-5244}:5244"
