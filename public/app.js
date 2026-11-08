@@ -1,4 +1,5 @@
 import { renderPreview as renderMedia } from './preview.js';
+import { createOpenlist, fieldHtml, readDriverForm } from './openlist.js';
 import { $, $$, sleep, reduceMotion, use, esc, fmtSize, fmtTime, join, kindOf, fileIcon, applyWallpaper, avatarHtml } from './common.js';
 
 
@@ -251,9 +252,10 @@ $('#menu-settings').addEventListener('click', () => {
 // 视图切换：侧边栏胶囊滑动 + 页面横向滑入
 // ==========================================================================
 
-const VIEWS = ['files', 'trash', 'shares', 'storages', 'settings'];
-const VIEW_TITLES = { trash: '回收站', shares: '分享管理', storages: '存储挂载', settings: '系统设置' };
+const VIEWS = ['files', 'trash', 'shares', 'storages', 'openlist', 'settings'];
+const VIEW_TITLES = { trash: '回收站', shares: '分享管理', storages: '存储挂载', openlist: 'OpenList', settings: '系统设置' };
 let currentView = null;
+const openlist = createOpenlist({ api, toast, ask, closeDialog, selectSegment: (el, pick) => selectSegment(el, pick) });
 
 function movePill() {
   const active = $('.nav-item.active');
@@ -291,7 +293,8 @@ function setView(view) {
   }
   $('.search').style.visibility = view === 'files' ? '' : 'hidden';
   if (VIEW_TITLES[view]) document.title = `${VIEW_TITLES[view]} · 喵喵零和小鱼的仓库`;
-  ({ files: loadFiles, trash: loadTrash, shares: loadShares, storages: loadStorages, settings: loadSettings })[view]();
+  ({ files: loadFiles, trash: loadTrash, shares: loadShares, storages: loadStorages, openlist: () => openlist.load(), settings: loadSettings })[view]();
+  if (view !== 'openlist') openlist.stop();
 }
 $$('.nav-item').forEach((b) =>
   b.addEventListener('click', () => {
@@ -821,6 +824,7 @@ function storageDetail(s) {
   if (s.type === 'local') return `本机目录 ${o.root || ''}`;
   if (s.type === 's3') return `${o.bucket || ''}${o.prefix ? '/' + o.prefix : ''} · ${o.endpoint ? host(o.endpoint) : 'AWS'} · ${mode}`;
   if (s.type === 'webdav') return `${host(o.url)}${o.root && o.root !== '/' ? o.root : ''}`;
+  if (s.managed) return '由 OpenList 提供';
   if (s.type === 'openlist') return `${host(o.url)}${o.root && o.root !== '/' ? o.root : ''} · ${mode}`;
   if (s.type === 'pan123') return `${String(o.rootFolderId || '0') === '0' ? '整个网盘' : '文件夹 ' + o.rootFolderId} · ${mode}`;
   return '';
@@ -840,8 +844,8 @@ async function loadStorages() {
       const status = !s.enabled ? '<span class="status off">已停用</span>' : s.mounted ? '<span class="status ok">正常</span>' : '<span class="status bad">挂载失败</span>';
       const style = reduceMotion() ? '' : ` style="animation-delay:${i * 30}ms"`;
       return `<tr data-id="${s.id}" class="row-in"${style}>
-        <td><div class="sname"><span class="sicon ${s.type}">${STORAGE_ICON[s.type] || ''}</span><span class="stext"><b>${esc(types[s.type]?.label || s.type)}</b><small>${esc(storageDetail(s))}</small></span></div></td>
-        <td><span class="pill ${s.type}">${esc(STORAGE_SHORT[s.type] || s.type)}</span></td>
+        <td><div class="sname"><span class="sicon ${s.type}">${STORAGE_ICON[s.type] || ''}</span><span class="stext"><b>${esc(s.managed ? s.managed.driver : types[s.type]?.label || s.type)}</b><small>${esc(storageDetail(s))}</small></span></div></td>
+        <td><span class="pill ${s.type}">${esc(s.managed ? s.managed.driver : STORAGE_SHORT[s.type] || s.type)}</span></td>
         <td><span class="mpath"><a href="#${encodeURIComponent(s.mountPath)}" title="打开">${esc(s.mountPath)}</a><button class="copy" data-copy="${esc(s.mountPath)}" aria-label="复制挂载路径">${use('i-copy')}</button></span></td>
         <td>${status}</td>
         <td><label class="switch"><input type="checkbox" data-toggle ${s.enabled ? 'checked' : ''} aria-label="启用 ${esc(s.mountPath)}"><span></span></label></td>
@@ -903,28 +907,55 @@ function renderFields(type, values = {}) {
     .join('');
 }
 
-function openStorageDrawer(s = null) {
+let olDrivers = null; // OpenList 驱动列表（字段定义），取不到时不显示“更多网盘”
+
+function renderOlFields(driver, values = {}) {
+  const d = olDrivers[driver];
+  const addition = values.addition || {};
+  const common = values.common || {};
+  $('#storage-fields').innerHTML =
+    (d.additional || []).map((it) => fieldHtml(it, addition[it.name], 'a')).join('') +
+    (d.common || []).filter((it) => it.name !== 'mount_path').map((it) => fieldHtml(it, common[it.name], 'c')).join('');
+}
+
+function renderStorageType(type, values) {
+  if (type.startsWith('ol:')) renderOlFields(type.slice(3), values);
+  else renderFields(type, values?.options);
+}
+
+async function openStorageDrawer(s = null) {
   editing = s;
   const form = $('#storage-form');
   form.reset();
   $('#storage-error').textContent = '';
   $('#storage-title').textContent = s ? '编辑存储' : '添加存储';
+  if (!olDrivers) {
+    olDrivers = await api('POST', '/api/openlist/call', { api: '/api/admin/driver/list' }).then((r) => r.data, () => ({}));
+  }
   const sel = $('#storage-type');
-  sel.innerHTML = Object.entries(types)
-    .map(([k, v]) => `<option value="${k}">${esc(v.label)}</option>`)
-    .join('');
-  sel.value = s?.type || 'local';
+  const builtin = Object.entries(types).map(([k, v]) => `<option value="${k}">${esc(v.label)}</option>`).join('');
+  const more = Object.keys(olDrivers).sort().map((k) => `<option value="ol:${esc(k)}">${esc(k)}</option>`).join('');
+  sel.innerHTML = builtin + (more ? `<optgroup label="更多网盘（由 OpenList 提供）">${more}</optgroup>` : '');
+  sel.value = s ? (s.managed ? `ol:${s.managed.driver}` : s.type) : 'local';
   sel.disabled = !!s;
   form.mountPath.value = s?.mountPath || '';
   form.enabled.checked = s ? s.enabled : true;
-  renderFields(sel.value, s?.options);
+  if (s?.managed) {
+    try {
+      renderStorageType(sel.value, await api('GET', `/api/storages/${s.id}/managed`));
+    } catch (err) {
+      $('#storage-error').textContent = err.message;
+    }
+  } else {
+    renderStorageType(sel.value, { options: s?.options });
+  }
   $('#storage-dialog').showModal();
   (s ? form.mountPath : sel).focus();
   $('.sheet-scroll').scrollTop = 0;
 }
 
 $('#btn-add-storage').addEventListener('click', () => openStorageDrawer());
-$('#storage-type').addEventListener('change', (e) => renderFields(e.target.value));
+$('#storage-type').addEventListener('change', (e) => renderStorageType(e.target.value));
 
 $('#storage-form').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -935,13 +966,29 @@ $('#storage-form').addEventListener('submit', async (e) => {
     $('#storage-error').textContent = `请填写“${missing.closest('label').firstChild.textContent.trim()}”`;
     return missing.focus();
   }
+  const btn = form.querySelector('button[type="submit"]');
+  if (type.startsWith('ol:')) {
+    const body = { mountPath: form.mountPath.value.trim(), enabled: form.enabled.checked, driver: type.slice(3), ...readDriverForm(form) };
+    btn.disabled = true;
+    try {
+      if (editing) await api('PUT', `/api/storages/${editing.id}/managed`, body);
+      else await api('POST', '/api/storages/managed', body);
+      closeDialog($('#storage-dialog'));
+      toast(editing ? '已保存' : `已挂载到 ${body.mountPath}`);
+      loadStorages();
+    } catch (err) {
+      $('#storage-error').textContent = err.message;
+    } finally {
+      btn.disabled = false;
+    }
+    return;
+  }
   const options = {};
   for (const f of types[type].fields) {
     const input = form.elements[`opt.${f.key}`];
     options[f.key] = f.type === 'boolean' ? input.checked : input.value.trim();
   }
   const body = { type, mountPath: form.mountPath.value.trim(), enabled: form.enabled.checked, options };
-  const btn = form.querySelector('button[type="submit"]');
   btn.disabled = true;
   try {
     if (editing) await api('PUT', `/api/storages/${editing.id}`, body);

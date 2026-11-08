@@ -10,6 +10,7 @@ import * as assets from './assets.js';
 import * as vfs from './vfs.js';
 import { HttpError } from './vfs.js';
 import { DRIVER_TYPES } from './drivers/index.js';
+import * as olbridge from './olbridge.js';
 import * as media from './media.js';
 import * as uploads from './upload.js';
 
@@ -285,9 +286,56 @@ admin.get('/storages/types', (req, res) => {
 admin.get('/storages', (req, res) => res.json(vfs.listStorages()));
 admin.post('/storages', (req, res) => res.json(vfs.addStorage(req.body)));
 admin.put('/storages/:id', (req, res) => res.json(vfs.updateStorage(req.params.id, req.body)));
-admin.delete('/storages/:id', (req, res) => {
+admin.delete('/storages/:id', async (req, res) => {
+  const s = vfs.getStorage(req.params.id);
   vfs.removeStorage(req.params.id);
+  // 托管的网盘同时删掉 OpenList 里对应的存储配置（不会删除网盘里的文件）
+  if (s?.managed) await olbridge.backend().call('POST', `/api/admin/storage/delete?id=${s.managed.id}`).catch(() => {});
   res.json({ ok: true });
+});
+
+// 由 OpenList 提供的网盘：在 OpenList 里建存储，再把它挂载到本站目录树
+function managedOptions(olMount) {
+  return { ...olbridge.connection(), root: olMount, downloadMode: 'proxy', publicUrl: '' };
+}
+admin.post('/storages/managed', async (req, res) => {
+  const { mountPath, driver, enabled = true, common, addition } = req.body || {};
+  if (!driver) throw new HttpError(400, '请选择网盘类型');
+  const ol = olbridge.backend();
+  const olMount = olbridge.newOlMount();
+  const created = await ol.call('POST', '/api/admin/storage/create', olbridge.storageBody({ driver, common, addition }, olMount));
+  try {
+    res.json(vfs.addStorage({ type: 'openlist', mountPath, enabled, options: managedOptions(olMount) }, { managed: { id: created.id, driver, olMount } }));
+  } catch (e) {
+    await ol.call('POST', `/api/admin/storage/delete?id=${created.id}`).catch(() => {});
+    throw e;
+  }
+});
+admin.get('/storages/:id/managed', async (req, res) => {
+  const s = vfs.getStorage(req.params.id);
+  if (!s?.managed) throw new HttpError(404, '这不是由 OpenList 提供的网盘');
+  const st = await olbridge.backend().call('GET', `/api/admin/storage/get?id=${s.managed.id}`);
+  res.json({ driver: st.driver, common: st, addition: JSON.parse(st.addition || '{}') });
+});
+admin.put('/storages/:id/managed', async (req, res) => {
+  const s = vfs.getStorage(req.params.id);
+  if (!s?.managed) throw new HttpError(404, '这不是由 OpenList 提供的网盘');
+  const { mountPath, enabled = true, common, addition } = req.body || {};
+  const ol = olbridge.backend();
+  await ol.call('POST', '/api/admin/storage/update', olbridge.storageBody({ driver: s.managed.driver, common, addition }, s.managed.olMount, s.managed.id));
+  await ol.call('POST', `/api/admin/storage/${enabled ? 'enable' : 'disable'}?id=${s.managed.id}`).catch(() => {});
+  res.json(vfs.updateStorage(s.id, { type: 'openlist', mountPath, enabled, options: { ...s.options } }));
+});
+
+// OpenList 管理：存储、离线下载、任务、搜索索引、站点设置，全部转发给已挂载的 OpenList 实例。
+// 只放行下面这些接口，路径里不允许出现 ..
+const OPENLIST_ALLOW = /^\/api\/(admin\/(storage|driver|task|index|setting|meta)\/|fs\/(add_offline_download|search)$|public\/(offline_download_tools|settings)$)/;
+admin.post('/openlist/call', async (req, res) => {
+  const { method = 'GET', api: target, body } = req.body || {};
+  if (typeof target !== 'string' || target.includes('..') || !OPENLIST_ALLOW.test(target.split('?')[0])) {
+    throw new HttpError(400, '不支持的 OpenList 接口');
+  }
+  res.json({ data: await olbridge.backend().call(String(method).toUpperCase() === 'GET' ? 'GET' : 'POST', target, body) });
 });
 
 admin.get('/settings', (req, res) => res.json(space.getSpaceSettings()));

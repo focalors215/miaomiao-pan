@@ -54,7 +54,7 @@ export const DRIVER_TYPES = {
     ],
   },
   openlist: {
-    label: 'OpenList（70+ 网盘）',
+    label: 'OpenList 实例（连接已有的）',
     cls: OpenListDriver,
     fields: [
       { key: 'url', label: 'OpenList 地址', required: true, default: 'http://openlist:5244', placeholder: 'http://openlist:5244' },
